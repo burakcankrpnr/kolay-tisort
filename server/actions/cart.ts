@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { cartItemSchema } from "@/lib/validators";
-import { CART_COOKIE, cartInclude } from "@/server/cart";
+import { CART_COOKIE } from "@/server/cart";
 
 async function cartForWrite() {
   const session = await auth();
@@ -93,9 +93,4 @@ export async function removeCartItem(itemId: string) {
   const cart = await cartForWrite();
   await prisma.cartItem.deleteMany({ where: { id: itemId, cartId: cart.id } });
   revalidatePath("/sepet");
-}
-
-export async function loadCart() {
-  const cart = await cartForWrite();
-  return prisma.cart.findUnique({ where: { id: cart.id }, include: cartInclude });
 }

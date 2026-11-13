@@ -6,6 +6,7 @@ import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { safeCallback } from "@/lib/callback";
 import { loginSchema, registerSchema } from "@/lib/validators";
 import { mergeGuestCart } from "@/server/cart";
 
@@ -19,11 +20,6 @@ function rethrowRedirect(error: unknown): void {
   ) {
     throw error;
   }
-}
-
-export function safeCallback(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/hesap";
-  return value;
 }
 
 async function clientKey(email: string) {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LoginForm } from "@/components/auth-forms";
-import { safeCallback } from "@/server/actions/auth";
+import { safeCallback } from "@/lib/callback";
 
 export const metadata: Metadata = { title: "Giriş" };
 
