@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-barlow), "Barlow", sans-serif;
+  --font-display: var(--font-condensed), "Barlow Condensed", sans-serif;
+  --color-ink: #121212;
+  --color-paper: #f3f3f0;
+  --color-concrete: #c8c4bc;
+  --color-press: #ff3b00;
+  --color-line: #d9d6d0;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-press);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
