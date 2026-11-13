@@ -12,7 +12,6 @@ const allowed = new Map([
 export async function saveUpload(file: File) {
   const ext = allowed.get(file.type);
   if (!ext) return { error: "PNG, JPG, WebP veya SVG yükle." as const };
-  if (file.size > 8 * 1024 * 1024) return { error: "Dosya 8 MB sınırını aşıyor." as const };
 
   const dir = path.join(process.cwd(), "public", "uploads");
   await mkdir(dir, { recursive: true });

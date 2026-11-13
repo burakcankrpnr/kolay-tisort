@@ -80,6 +80,9 @@
 
   --radius-card: var(--r-card);
   --radius-control: var(--r-control);
+
+  /* Site içerik genişliği (önceden 1280px) */
+  --max-width-site: 100rem;
 }
 
 html {

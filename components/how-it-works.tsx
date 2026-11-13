@@ -38,7 +38,7 @@ export function HowItWorks() {
 
   return (
     <section className="border-b border-border" aria-labelledby="nasil-calisir">
-      <div className="mx-auto grid max-w-[1280px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-28">
+      <div className="mx-auto grid max-w-site gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-28">
         <div>
           <p className="font-display text-sm font-semibold tracking-widest text-primary">04 — SÜREÇ</p>
           <h2 id="nasil-calisir" className="text-h1 mt-3 max-w-md">

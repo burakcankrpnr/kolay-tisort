@@ -4,8 +4,9 @@ import { ArrowRight, Lock, ShieldCheck, Truck } from "lucide-react";
 import { auth } from "@/auth";
 import { CartItems } from "@/components/cart-items";
 import { PageHeader } from "@/components/page-header";
-import { bulkDiscount, printSideLabel, quantityTierPercent, unitPrice } from "@/lib/pricing";
+import { bulkDiscount, describePrint, quantityTierPercent, unitPrice } from "@/lib/pricing";
 import { shippingOptions } from "@/lib/shipping";
+import { jsonHasPieces } from "@/features/design-editor/model";
 import { readCart } from "@/server/cart";
 import { formatTry } from "@/utils/money";
 
@@ -24,7 +25,7 @@ export default async function CartPage() {
       quantity: item.quantity,
       unitPrice: unitPrice(item.product.basePrice, item.variant.priceDelta, item.printFee),
       silhouette: item.product.silhouette,
-      note: item.printSide === "NONE" ? "" : printSideLabel[item.printSide],
+      note: describePrint(item.printSide, jsonHasPieces(item.design?.neckJson)),
       previewUrl: item.design?.previewUrl ?? null,
       designId: item.designId,
       isDtf: Boolean(item.dtfSheetId),
@@ -39,7 +40,7 @@ export default async function CartPage() {
   const checkoutHref = session?.user ? "/odeme" : "/giris?callbackUrl=/odeme";
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6">
       <PageHeader title="Sepetin" lede={lines.length ? `${lines.reduce((s, l) => s + l.quantity, 0)} ürün` : undefined} crumbs={[{ href: "/", label: "Ana sayfa" }, { label: "Sepet" }]} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <CartItems lines={lines} />

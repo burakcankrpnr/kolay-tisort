@@ -33,6 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { studioFonts } from "./fonts";
 import { cmToPx, dpiLevel, pieceDpi, PRINT, pxToCm, type Piece } from "./model";
+
+type PrintBox = { x: number; y: number; w: number; h: number };
 import { ColorField, NumberField, Section, SliderField, SwitchRow, Toggle } from "./ui";
 
 export type Align = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
@@ -40,6 +42,7 @@ export type Align = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
 export function Properties({
   piece,
   box,
+  area = PRINT,
   onPatch,
   onAlign,
   onOrder,
@@ -50,6 +53,7 @@ export function Properties({
 }: {
   piece: Piece;
   box: { x: number; y: number; width: number; height: number } | null;
+  area?: PrintBox;
   onPatch: (patch: Partial<Piece>, key?: string) => void;
   onAlign: (align: Align) => void;
   onOrder: (direction: "up" | "down" | "top" | "bottom") => void;
@@ -160,14 +164,14 @@ export function Properties({
           <NumberField
             label="X"
             suffix="cm"
-            value={box ? pxToCm(box.x - PRINT.x) : 0}
-            onChange={(cm) => box && onPatch({ x: piece.x + (cmToPx(cm) + PRINT.x - box.x) }, k("x"))}
+            value={box ? pxToCm(box.x - area.x) : 0}
+            onChange={(cm) => box && onPatch({ x: piece.x + (cmToPx(cm) + area.x - box.x) }, k("x"))}
           />
           <NumberField
             label="Y"
             suffix="cm"
-            value={box ? pxToCm(box.y - PRINT.y) : 0}
-            onChange={(cm) => box && onPatch({ y: piece.y + (cmToPx(cm) + PRINT.y - box.y) }, k("y"))}
+            value={box ? pxToCm(box.y - area.y) : 0}
+            onChange={(cm) => box && onPatch({ y: piece.y + (cmToPx(cm) + area.y - box.y) }, k("y"))}
           />
           <NumberField
             label="W"

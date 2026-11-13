@@ -27,7 +27,7 @@ export function Hero({
         <i />
         <i />
       </div>
-      <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-4 pt-10 pb-12 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:pt-16 md:pb-20 lg:gap-16">
+      <div className="mx-auto grid max-w-site items-center gap-10 px-4 pt-10 pb-12 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:pt-16 md:pb-20 lg:gap-16">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium backdrop-blur">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />

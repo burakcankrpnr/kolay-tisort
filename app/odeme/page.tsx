@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CheckoutForm } from "@/components/checkout-form";
 import { PageHeader } from "@/components/page-header";
-import { bulkDiscount, printSideLabel, quantityTierPercent, unitPrice } from "@/lib/pricing";
+import { jsonHasPieces } from "@/features/design-editor/model";
+import { bulkDiscount, describePrint, quantityTierPercent, unitPrice } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { readCart } from "@/server/cart";
 
@@ -25,7 +26,10 @@ export default async function CheckoutPage() {
     name: item.dtfSheet ? `DTF tabaka ${item.dtfSheet.widthCm}×${item.dtfSheet.heightCm} cm` : item.product.name,
     detail: item.dtfSheet
       ? "Baskı filmi"
-      : `${item.variant.color.name} / ${item.variant.size.name}${item.printSide === "NONE" ? "" : ` · ${printSideLabel[item.printSide]}`}`,
+      : `${item.variant.color.name} / ${item.variant.size.name}${(() => {
+          const label = describePrint(item.printSide, jsonHasPieces(item.design?.neckJson));
+          return label === "Baskısız" ? "" : ` · ${label}`;
+        })()}`,
     quantity: item.quantity,
     unitPrice: unitPrice(item.product.basePrice, item.variant.priceDelta, item.printFee),
     previewUrl: item.design?.previewUrl ?? null,
@@ -37,7 +41,7 @@ export default async function CheckoutPage() {
   const bulk = bulkDiscount(garments.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0), garmentQty);
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6">
       <PageHeader title="Güvenli ödeme" crumbs={[{ href: "/sepet", label: "Sepet" }, { label: "Ödeme" }]} />
       <CheckoutForm
         lines={lines}

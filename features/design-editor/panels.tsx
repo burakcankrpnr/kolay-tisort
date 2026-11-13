@@ -64,7 +64,7 @@ export function UploadPanel({
   const [over, setOver] = useState(false);
   return (
     <div>
-      <PanelHead title="Görsel yükle" text="PNG (şeffaf arka plan önerilir), JPG, WebP veya SVG. En fazla 8 MB. Sürükle-bırak ve Ctrl+V ile yapıştırma da çalışır." />
+      <PanelHead title="Görsel yükle" text="PNG (şeffaf arka plan önerilir), JPG, WebP veya SVG. Sürükle-bırak ve Ctrl+V ile yapıştırma da çalışır." />
       <div className="px-4">
         <button
           type="button"

@@ -106,11 +106,15 @@ export async function loginAction(formData: FormData) {
 
   await mergeGuestCart(user.id);
 
+  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+  // Yönetici varsayılan hesabına değil, panele düşer; özel callback (ödeme vb.) korunur.
+  const redirectTo = isAdmin && (callbackUrl === "/hesap" || callbackUrl === "/") ? "/admin" : callbackUrl;
+
   try {
     await signIn("credentials", {
       email,
       password: parsed.data.password,
-      redirectTo: callbackUrl,
+      redirectTo,
     });
   } catch (error) {
     rethrowRedirect(error);

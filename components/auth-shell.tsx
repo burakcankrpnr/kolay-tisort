@@ -5,7 +5,7 @@ import { Garment } from "@/components/garment";
 /** Giriş / kayıt / şifre sayfaları için iki sütunlu düzen. */
 export function AuthShell({ title, lede, children }: { title: string; lede?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto grid min-h-[calc(100dvh-10rem)] max-w-[1280px] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-16">
+    <div className="mx-auto grid min-h-[calc(100dvh-10rem)] max-w-site gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-16">
       <aside className="relative hidden h-full min-h-[560px] overflow-hidden rounded-card bg-foreground p-10 text-background lg:flex lg:flex-col">
         <div className="mesh opacity-40" aria-hidden="true">
           <i />

@@ -14,7 +14,7 @@ Bu dosya, `02-GORUNUM-UIUX-SEO-PERFORMANS` ve `03-EFEKT-ANIMASYON-WOW` katmanlar
 - **Geçmiş**: 60 adım geri al/yinele. Slider sürüklemeleri aynı anahtar altında birleşir (her piksel ayrı adım olmaz).
 - **Otomatik taslak**: `localStorage` (`studio-draft-v2`), ürün değişse de taslak korunur; sepete eklenince temizlenir. Hesaptaki tasarımlar `?tasarim=<id>` ile stüdyoda açılır.
 - **Baskı dosyası (üretim için kritik)**: Sepete eklerken her dolu yüz için ekrandaki tuvalden bağımsız, görünmez bir Konva sahnesinde **35×40 cm @ 300 DPI (4133×4719 px) şeffaf PNG** üretilir, `/api/uploads`'a yüklenir ve `DesignLayer(kind="print-file")` olarak saklanır. Sipariş anında `designSnapshot.printFiles` içine kopyalanır; yönetimde "Ön/Arka baskı dosyası" olarak indirilir. Önceden siparişe ürün önizlemesi (mockup) gidiyordu.
-- **Sunucu aksiyonuna base64 gönderilmez**: Önizleme ve baskı dosyaları multipart yükleme ile gider (server action 1 MB sınırı). Sunucu yalnızca kendi yükleme yolumuzdaki URL'leri kabul eder.
+- **Sunucu aksiyonuna base64 gönderilmez**: Önizleme ve baskı dosyaları `/api/uploads` üzerinden multipart gider; dosya boyutu sınırı yok (`bodySizeLimit` 512 MB). Sunucu yalnızca kendi yükleme yolumuzdaki URL'leri kabul eder.
 - **Yerel "AI"**: Uzak AI anahtarı yokken üretim yerel SVG kompozisyonudur ve arayüz bunu açıkça söyler.
 
 ### Ticari mantık düzeltmeleri

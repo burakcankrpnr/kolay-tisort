@@ -28,7 +28,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
   const minutes = (body: string) => Math.max(1, Math.round(body.split(/\s+/).length / 200));
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6">
       <PageHeader eyebrow="Blog" title="Baskı rehberi" lede="Dosya hazırlamaktan kumaş seçimine; daha iyi baskı için bilmen gerekenler." crumbs={[{ href: "/", label: "Ana sayfa" }, { label: "Blog" }]} />
       {categories.length ? (
         <nav aria-label="Blog kategorileri" className="mb-8 flex gap-2 overflow-x-auto pb-1">

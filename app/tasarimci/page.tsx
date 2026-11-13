@@ -30,7 +30,7 @@ export default async function DesignerPage() {
   const earnings = sales - commission;
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6">
       <PageHeader
         eyebrow="Tasarımcı paneli"
         title="Tasarımını yükle, her satıştan kazan."

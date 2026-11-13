@@ -70,7 +70,7 @@ export function SiteHeader({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[1280px] items-center gap-4 px-4 transition-[height] duration-300 sm:px-6",
+            "mx-auto flex max-w-site items-center gap-4 px-4 transition-[height] duration-300 sm:px-6",
             compact ? "h-14" : "h-16 md:h-20",
           )}
         >

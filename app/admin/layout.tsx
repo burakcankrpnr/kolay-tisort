@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Yönetim", robots: { index: false } 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await requireAdmin();
   return (
-    <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10 lg:py-10">
+    <div className="mx-auto grid max-w-site gap-6 px-4 py-6 sm:px-6 xl:px-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10 lg:py-10">
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="mb-4 hidden rounded-card border border-border bg-card p-4 lg:block">
           <p className="text-xs font-semibold tracking-widest text-primary uppercase">Yönetim</p>

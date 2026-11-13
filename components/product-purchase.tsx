@@ -191,7 +191,7 @@ export function ProductPurchase({
             <span key={unit} className="price-tick font-display text-4xl font-bold tabular-nums">
               {formatTry(unit)}
             </span>
-            <span className="text-sm text-muted-foreground">+ baskı {formatTry(printFees.FRONT)}’den</span>
+            <span className="text-sm text-muted-foreground">+ baskı {formatTry(printFees.FRONT)}’den · ense etiketi opsiyonel</span>
           </p>
           <p className="mt-4 leading-relaxed text-muted-foreground">{description}</p>
 

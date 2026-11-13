@@ -20,7 +20,7 @@ const faqs = [
 
 export default function DtfPage() {
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6 xl:px-8">
       <PageHeader
         eyebrow="DTF baskı"
         title="Tabakanı diz, biz basalım."

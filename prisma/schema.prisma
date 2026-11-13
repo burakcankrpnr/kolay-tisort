@@ -436,6 +436,7 @@ model Design {
   printHeightCm Float         @default(40)
   frontJson     Json?
   backJson      Json?
+  neckJson      Json?
   previewUrl    String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

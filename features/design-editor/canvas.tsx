@@ -7,7 +7,16 @@ import type { Silhouette } from "@prisma/client";
 import { garmentPaths } from "@/components/garment";
 import { iconDataUrl } from "./assets";
 import { fontFamilyFor } from "./fonts";
-import { curvePath, PRINT, PRINT_HEIGHT_CM, PRINT_WIDTH_CM, PX_PER_CM, STAGE, type Piece, type ShapeType } from "./model";
+import {
+  curvePath,
+  printArea,
+  printSizeCm,
+  PX_PER_CM,
+  STAGE,
+  type Piece,
+  type ShapeType,
+  type Side,
+} from "./model";
 
 export type CanvasHandle = {
   exportMockup: () => string | null;
@@ -19,7 +28,7 @@ type Props = {
   pieces: Piece[];
   silhouette: Silhouette;
   garmentColor: string;
-  side?: "front" | "back";
+  side?: Side;
   selectedId: string | null;
   scale: number;
   showGrid: boolean;
@@ -102,6 +111,9 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
   const pinch = useRef<number | null>(null);
   const prev = useRef<{ x?: number; y?: number } | null>(null);
   const selected = pieces.find((piece) => piece.id === selectedId) ?? null;
+  const area = printArea(side);
+  const sizeCm = printSizeCm(side);
+  const tickStep = side === "neck" ? 1 : 5;
 
   useEffect(() => {
     const tr = trRef.current;
@@ -132,16 +144,16 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
     exportPrintFile(dpi) {
       const stage = stageRef.current;
       if (!stage) return null;
-      const targetPx = (PRINT_WIDTH_CM / 2.54) * dpi;
+      const targetPx = (sizeCm.widthCm / 2.54) * dpi;
       trRef.current?.visible(false);
       chromeRef.current?.visible(false);
       garmentRef.current?.visible(false);
       const url = stage.toDataURL({
-        x: PRINT.x * scale,
-        y: PRINT.y * scale,
-        width: PRINT.w * scale,
-        height: PRINT.h * scale,
-        pixelRatio: targetPx / (PRINT.w * scale),
+        x: area.x * scale,
+        y: area.y * scale,
+        width: area.w * scale,
+        height: area.h * scale,
+        pixelRatio: targetPx / (area.w * scale),
         mimeType: "image/png",
       });
       trRef.current?.visible(true);
@@ -154,8 +166,8 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
   function collectTargets(exceptId: string) {
     const layer = layerRef.current;
     const stage = stageRef.current;
-    const v = [PRINT.x, PRINT.x + PRINT.w / 2, PRINT.x + PRINT.w];
-    const h = [PRINT.y, PRINT.y + PRINT.h / 2, PRINT.y + PRINT.h];
+    const v = [area.x, area.x + area.w / 2, area.x + area.w];
+    const h = [area.y, area.y + area.h / 2, area.y + area.h];
     if (layer && stage) {
       for (const piece of pieces) {
         if (piece.id === exceptId || piece.hidden) continue;
@@ -203,10 +215,17 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
     prev.current = { x: bestX?.t, y: bestY?.t };
   }
   const garmentPath = garmentPaths[silhouette];
-  const ticksX = useMemo(() => Array.from({ length: Math.floor(PRINT_WIDTH_CM / 5) + 1 }, (_, i) => i * 5), []);
-  const ticksY = useMemo(() => Array.from({ length: Math.floor(PRINT_HEIGHT_CM / 5) + 1 }, (_, i) => i * 5), []);
+  const ticksX = useMemo(
+    () => Array.from({ length: Math.floor(sizeCm.widthCm / tickStep) + 1 }, (_, i) => i * tickStep),
+    [sizeCm.widthCm, tickStep],
+  );
+  const ticksY = useMemo(
+    () => Array.from({ length: Math.floor(sizeCm.heightCm / tickStep) + 1 }, (_, i) => i * tickStep),
+    [sizeCm.heightCm, tickStep],
+  );
   const isLight = luminance(garmentColor) > 0.6;
   const chromeColor = isLight ? "rgba(17,17,17,0.45)" : "rgba(255,255,255,0.55)";
+  const showCollar = side === "back" || side === "neck";
 
   return (
     <Stage
@@ -248,7 +267,7 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
             stroke={isLight ? "rgba(17,17,17,0.25)" : "rgba(255,255,255,0.12)"}
             strokeWidth={0.5}
           />
-          {side === "back" ? (
+          {showCollar ? (
             <Group listening={false} scaleX={GARMENT_SCALE} scaleY={GARMENT_SCALE}>
               <Rect x={88} y={48} width={24} height={14} fill={isLight ? "rgba(17,17,17,0.12)" : "rgba(255,255,255,0.14)"} stroke={chromeColor} strokeWidth={0.4} />
               <Line points={[94, 52, 106, 52]} stroke={chromeColor} strokeWidth={0.5} />
@@ -264,26 +283,38 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
 
         {/* Baskı alanı, ızgara ve cetvel (dışa aktarımda gizlenir) */}
         <Group ref={chromeRef} listening={false} visible={!realistic}>
-          <Rect x={PRINT.x} y={PRINT.y} width={PRINT.w} height={PRINT.h} stroke="#FF3B00" strokeWidth={1.2} dash={[7, 5]} />
+          <Rect x={area.x} y={area.y} width={area.w} height={area.h} stroke="#FF3B00" strokeWidth={1.2} dash={[7, 5]} />
+          {side === "neck" ? (
+            <Text
+              x={area.x}
+              y={area.y + area.h + 6}
+              width={area.w}
+              align="center"
+              text="Ense etiketi"
+              fontSize={11}
+              fill={chromeColor}
+              fontFamily="system-ui, sans-serif"
+            />
+          ) : null}
           {showGrid
             ? [
                 ...ticksX.slice(1, -1).map((cm) => (
-                  <Line key={`gx${cm}`} points={[PRINT.x + cm * PX_PER_CM, PRINT.y, PRINT.x + cm * PX_PER_CM, PRINT.y + PRINT.h]} stroke={chromeColor} strokeWidth={0.5} dash={[2, 4]} />
+                  <Line key={`gx${cm}`} points={[area.x + cm * PX_PER_CM, area.y, area.x + cm * PX_PER_CM, area.y + area.h]} stroke={chromeColor} strokeWidth={0.5} dash={[2, 4]} />
                 )),
                 ...ticksY.slice(1, -1).map((cm) => (
-                  <Line key={`gy${cm}`} points={[PRINT.x, PRINT.y + cm * PX_PER_CM, PRINT.x + PRINT.w, PRINT.y + cm * PX_PER_CM]} stroke={chromeColor} strokeWidth={0.5} dash={[2, 4]} />
+                  <Line key={`gy${cm}`} points={[area.x, area.y + cm * PX_PER_CM, area.x + area.w, area.y + cm * PX_PER_CM]} stroke={chromeColor} strokeWidth={0.5} dash={[2, 4]} />
                 )),
-                <Line key="cx" points={[PRINT.x + PRINT.w / 2, PRINT.y, PRINT.x + PRINT.w / 2, PRINT.y + PRINT.h]} stroke="#FF3B00" strokeWidth={0.6} opacity={0.6} />,
+                <Line key="cx" points={[area.x + area.w / 2, area.y, area.x + area.w / 2, area.y + area.h]} stroke="#FF3B00" strokeWidth={0.6} opacity={0.6} />,
               ]
             : null}
           {ticksX.map((cm) => (
-            <Line key={`tx${cm}`} points={[PRINT.x + cm * PX_PER_CM, PRINT.y - 8, PRINT.x + cm * PX_PER_CM, PRINT.y - (cm % 10 === 0 ? 14 : 11)]} stroke={chromeColor} strokeWidth={1} />
+            <Line key={`tx${cm}`} points={[area.x + cm * PX_PER_CM, area.y - 8, area.x + cm * PX_PER_CM, area.y - (cm % 10 === 0 || tickStep === 1 ? 14 : 11)]} stroke={chromeColor} strokeWidth={1} />
           ))}
           {ticksY.map((cm) => (
-            <Line key={`ty${cm}`} points={[PRINT.x - 8, PRINT.y + cm * PX_PER_CM, PRINT.x - (cm % 10 === 0 ? 14 : 11), PRINT.y + cm * PX_PER_CM]} stroke={chromeColor} strokeWidth={1} />
+            <Line key={`ty${cm}`} points={[area.x - 8, area.y + cm * PX_PER_CM, area.x - (cm % 10 === 0 || tickStep === 1 ? 14 : 11), area.y + cm * PX_PER_CM]} stroke={chromeColor} strokeWidth={1} />
           ))}
-          <Text x={PRINT.x} y={PRINT.y - 30} width={PRINT.w} align="center" text={`${PRINT_WIDTH_CM} cm`} fontSize={11} fill={chromeColor} fontFamily="system-ui, sans-serif" />
-          <Text x={PRINT.x - 34} y={PRINT.y + PRINT.h / 2 + 20} rotation={-90} text={`${PRINT_HEIGHT_CM} cm`} fontSize={11} fill={chromeColor} fontFamily="system-ui, sans-serif" />
+          <Text x={area.x} y={area.y - 30} width={area.w} align="center" text={`${sizeCm.widthCm} cm`} fontSize={11} fill={chromeColor} fontFamily="system-ui, sans-serif" />
+          <Text x={area.x - 34} y={area.y + area.h / 2 + 20} rotation={-90} text={`${sizeCm.heightCm} cm`} fontSize={11} fill={chromeColor} fontFamily="system-ui, sans-serif" />
         </Group>
 
         {/* Tasarım öğeleri */}
@@ -308,10 +339,10 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
             return [clip];
           }}
         >
-          <Rect x={0} y={0} width={STAGE.w} height={PRINT.y} fill={garmentColor} opacity={0.72} />
-          <Rect x={0} y={PRINT.y + PRINT.h} width={STAGE.w} height={STAGE.h - PRINT.y - PRINT.h} fill={garmentColor} opacity={0.72} />
-          <Rect x={0} y={PRINT.y} width={PRINT.x} height={PRINT.h} fill={garmentColor} opacity={0.72} />
-          <Rect x={PRINT.x + PRINT.w} y={PRINT.y} width={STAGE.w - PRINT.x - PRINT.w} height={PRINT.h} fill={garmentColor} opacity={0.72} />
+          <Rect x={0} y={0} width={STAGE.w} height={area.y} fill={garmentColor} opacity={0.72} />
+          <Rect x={0} y={area.y + area.h} width={STAGE.w} height={STAGE.h - area.y - area.h} fill={garmentColor} opacity={0.72} />
+          <Rect x={0} y={area.y} width={area.x} height={area.h} fill={garmentColor} opacity={0.72} />
+          <Rect x={area.x + area.w} y={area.y} width={STAGE.w - area.x - area.w} height={area.h} fill={garmentColor} opacity={0.72} />
         </Group>
 
         {/* Gerçekçi önizleme: kumaş gölgesi + ışık, baskıyı kumaşa oturtur */}

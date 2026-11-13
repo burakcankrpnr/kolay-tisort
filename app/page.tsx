@@ -96,7 +96,7 @@ export default async function HomePage() {
 
       {/* Güven şeridi + sayaçlar */}
       <section aria-label="Neden biz" className="border-b border-border">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-2 gap-px bg-border px-0 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-site grid-cols-2 gap-px bg-border px-0 lg:grid-cols-4">
           {trust.map(({ icon: Icon, title, body }, index) => (
             <Reveal key={title} stagger={index} className="flex items-start gap-3 bg-background px-4 py-6 sm:px-6">
               <Icon size={20} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
@@ -110,7 +110,7 @@ export default async function HomePage() {
       </section>
 
       {/* Hızlı başlat — bento */}
-      <section className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 md:py-28" aria-labelledby="hizli-baslat">
+      <section className="mx-auto max-w-site px-4 py-16 sm:px-6 md:py-28" aria-labelledby="hizli-baslat">
         <SectionHead index="01" eyebrow="BAŞLA" id="hizli-baslat" title="Nereden başlamak istersin?" />
         <div className="mt-10 grid gap-4 md:grid-cols-6 md:grid-rows-[repeat(2,minmax(220px,auto))]">
           <Reveal className="md:col-span-3 md:row-span-2">
@@ -156,7 +156,7 @@ export default async function HomePage() {
       {/* Kategoriler */}
       {visibleCategories.length ? (
         <section className="border-y border-border bg-muted/40" aria-labelledby="kategoriler">
-          <div className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 md:py-24">
+          <div className="mx-auto max-w-site px-4 py-16 sm:px-6 md:py-24">
             <SectionHead index="02" eyebrow="KATEGORİLER" id="kategoriler" title="Ürününü seç." link={{ href: "/urunler", label: "Tüm ürünler" }} />
             <ul className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-5">
               {visibleCategories.map((category, index) => (
@@ -179,7 +179,7 @@ export default async function HomePage() {
       ) : null}
 
       {/* Çok satanlar */}
-      <section className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 md:py-28" aria-labelledby="cok-satanlar">
+      <section className="mx-auto max-w-site px-4 py-16 sm:px-6 md:py-28" aria-labelledby="cok-satanlar">
         <SectionHead index="03" eyebrow="ÇOK SATANLAR" id="cok-satanlar" title="Atölyenin favorileri." link={{ href: "/urunler", label: "Hepsini gör" }} />
         <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
           {products.map((product, index) => (
@@ -204,7 +204,7 @@ export default async function HomePage() {
       {/* Sayılar */}
       {settings.effects.stats.length ? (
         <section className="border-b border-border" aria-label="Rakamlarla">
-          <dl className="mx-auto grid max-w-[1280px] grid-cols-2 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-4 md:py-20">
+          <dl className="mx-auto grid max-w-site grid-cols-2 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-4 md:py-20">
             {settings.effects.stats.map((stat, index) => (
               <Reveal key={stat.label} stagger={index} className="border-l border-border pl-5">
                 <dd className="font-display text-5xl font-bold tracking-tight md:text-6xl">
@@ -218,7 +218,7 @@ export default async function HomePage() {
       ) : null}
 
       {/* DTF + Kurumsal */}
-      <section className="mx-auto grid max-w-[1280px] gap-4 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-28">
+      <section className="mx-auto grid max-w-site gap-4 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-28">
         <Reveal className="fx-spot relative overflow-hidden rounded-card bg-foreground p-8 text-background md:p-12">
           <p className="font-display text-sm font-semibold tracking-widest text-primary">05 — DTF BASKI</p>
           <h2 className="text-h1 mt-3 max-w-sm">Tabakanı diz, biz basalım.</h2>
@@ -275,7 +275,7 @@ export default async function HomePage() {
       {/* Yorumlar (yalnızca gerçek yorum varsa) */}
       {reviews.length ? (
         <section className="border-y border-border bg-muted/40" aria-labelledby="yorumlar">
-          <div className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 md:py-24">
+          <div className="mx-auto max-w-site px-4 py-16 sm:px-6 md:py-24">
             <SectionHead index="07" eyebrow="YORUMLAR" id="yorumlar" title="Giyenler anlatıyor." />
             <ul className="mt-10 grid gap-4 md:grid-cols-3">
               {reviews.map((review, index) => (
@@ -297,7 +297,7 @@ export default async function HomePage() {
       ) : null}
 
       {/* SSS */}
-      <section className="mx-auto grid max-w-[1280px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-[0.8fr_1.2fr] md:py-28" aria-labelledby="sss">
+      <section className="mx-auto grid max-w-site gap-10 px-4 py-16 sm:px-6 md:grid-cols-[0.8fr_1.2fr] md:py-28" aria-labelledby="sss">
         <SectionHead index="08" eyebrow="SSS" id="sss" title="Merak edilenler." />
         <div className="divide-y divide-border border-y border-border">
           {faqs.map((item) => (
@@ -352,7 +352,7 @@ export default async function HomePage() {
         >
           TASARLA
         </p>
-        <div className="mx-auto flex max-w-[1280px] flex-col items-start gap-8 px-4 py-20 sm:px-6 md:flex-row md:items-end md:justify-between md:py-32">
+        <div className="mx-auto flex max-w-site flex-col items-start gap-8 px-4 py-20 sm:px-6 md:flex-row md:items-end md:justify-between md:py-32">
           <h2 className="text-display max-w-[14ch]">Fikrin hazırsa, tişörtün de hazır.</h2>
           <Button asChild variant="primary" size="lg">
             <Link href="/tasarla" data-magnetic="">

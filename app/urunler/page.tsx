@@ -47,7 +47,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   };
 
   return (
-    <div className="mx-auto max-w-[1280px] overflow-x-clip px-4 pb-28 sm:px-6 md:pb-20">
+    <div className="mx-auto max-w-site overflow-x-clip px-4 pb-28 sm:px-6 md:pb-20">
       <PageHeader
         className="!pt-6 !pb-6 md:!pt-12 md:!pb-14"
         eyebrow="Mağaza"

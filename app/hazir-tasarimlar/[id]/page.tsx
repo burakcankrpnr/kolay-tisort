@@ -34,7 +34,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     .filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6 xl:px-8">
       <PageHeader
         eyebrow={listingCategoryLabel(listing.category)}
         title={listing.title}

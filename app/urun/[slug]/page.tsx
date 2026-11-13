@@ -11,7 +11,7 @@ import { ProductPurchase } from "@/components/product-purchase";
 import { ReviewForm } from "@/components/review-form";
 import { sizeChartRows } from "@/config/size-chart";
 import { deliveryWindow } from "@/lib/delivery";
-import { printFees } from "@/lib/pricing";
+import { neckFee, printFees } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { clampText, siteUrl } from "@/lib/seo";
 import { getSettings } from "@/lib/settings";
@@ -120,9 +120,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       body: (
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Teknik: DTF (direct-to-film) — canlı renk, ince detay, esnek tutuş.</li>
-          <li>Baskı alanı: ön ve arka için 35 × 40 cm’ye kadar.</li>
+          <li>Baskı alanı: ön ve arka için 35 × 40 cm’ye kadar; ense etiketi 6 × 6 cm.</li>
           <li>
-            Baskı ücreti: tek yüz {formatTry(printFees.FRONT)}, ön + arka {formatTry(printFees.BOTH)}.
+            Baskı ücreti: tek yüz {formatTry(printFees.FRONT)}, ön + arka {formatTry(printFees.BOTH)}, ense etiketi +{formatTry(neckFee)}.
           </li>
           <li>En iyi sonuç için 300 DPI veya üzeri, şeffaf arka planlı PNG yükle.</li>
         </ul>
@@ -162,7 +162,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ];
 
   return (
-    <article className="mx-auto max-w-[1280px] px-4 pt-6 pb-28 sm:px-6 md:pb-20">
+    <article className="mx-auto max-w-site px-4 pt-6 pb-28 sm:px-6 xl:px-8 md:pb-20">
       <nav aria-label="Konum" className="mb-6 text-sm text-muted-foreground">
         <ol className="flex flex-wrap items-center gap-1">
           <li>

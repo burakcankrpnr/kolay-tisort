@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { OrderTimeline } from "@/components/order-timeline";
 import { orderStatusLabel, paymentStatusLabel } from "@/lib/labels";
-import { printSideLabel } from "@/lib/pricing";
+import { sideLabel } from "@/features/design-editor/model";
+import { describePrint } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { refundOrder, setOrderStatus } from "@/server/actions/admin";
 import { formatTry } from "@/utils/money";
@@ -36,8 +37,11 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             widthCm?: number;
             heightCm?: number;
             previewUrl?: string | null;
-            printFiles?: { side: "front" | "back"; url: string; dpi: number }[];
+            neckJson?: unknown;
+            printFiles?: { side: "front" | "back" | "neck"; url: string; dpi: number }[];
           } | null;
+          const hasNeck =
+            Array.isArray(snap?.neckJson) ? snap.neckJson.length > 0 : Boolean(snap?.printFiles?.some((f) => f.side === "neck"));
           const measure = snap?.printWidthCm
             ? `${snap.printWidthCm}×${snap.printHeightCm} cm`
             : snap?.widthCm
@@ -49,13 +53,13 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                 {item.productName} · {item.colorName} · {item.sizeName} · {item.quantity} adet · {formatTry(item.unitPrice)}
               </p>
               <p>
-                {printSideLabel[item.printSide]} · Baskı {formatTry(item.printFee)} · Ölçü {measure}
+                {describePrint(item.printSide, hasNeck)} · Baskı {formatTry(item.printFee)} · Ölçü {measure}
               </p>
               {snap?.printFiles?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {snap.printFiles.map((file) => (
                     <a key={file.url} href={file.url} download className="inline-flex h-9 items-center gap-1.5 rounded-control border border-input px-3 text-xs font-semibold hover:border-foreground/50">
-                      <Download size={14} /> {file.side === "front" ? "Ön" : "Arka"} baskı dosyası · {file.dpi} DPI
+                      <Download size={14} /> {sideLabel[file.side] ?? file.side} baskı dosyası · {file.dpi} DPI
                     </a>
                   ))}
                 </div>

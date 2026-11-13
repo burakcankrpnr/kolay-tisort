@@ -11,7 +11,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const session = await auth();
   const { callbackUrl } = await searchParams;
   const next = safeCallback(callbackUrl);
-  if (session?.user) redirect(next);
+  if (session?.user) {
+    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    redirect(isAdmin && (next === "/hesap" || next === "/") ? "/admin" : next);
+  }
 
   return (
     <AuthShell title="Giriş yap" lede="Tasarımlarına, siparişlerine ve favorilerine ulaş.">

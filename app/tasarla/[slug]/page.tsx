@@ -69,7 +69,11 @@ export default async function DesignEditorPage({
           color: item.colors[0]?.hex ?? "#161616",
         }))}
       listings={listings}
-      initialDesign={design ? { id: design.id, name: design.name, front: design.frontJson, back: design.backJson } : null}
+      initialDesign={
+        design
+          ? { id: design.id, name: design.name, front: design.frontJson, back: design.backJson, neck: design.neckJson }
+          : null
+      }
     />
   );
 }

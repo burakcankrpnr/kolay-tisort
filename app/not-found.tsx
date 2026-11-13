@@ -4,7 +4,7 @@ import { Garment } from "@/components/garment";
 
 export default function NotFound() {
   return (
-    <div className="relative isolate mx-auto grid max-w-[1280px] items-center gap-10 overflow-hidden px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
+    <div className="relative isolate mx-auto grid max-w-site items-center gap-10 overflow-hidden px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
       <div>
         <p className="font-display text-sm font-semibold tracking-widest text-primary uppercase">Hata 404</p>
         <h1 className="text-display mt-3">Bu sayfa baskıya girmemiş.</h1>

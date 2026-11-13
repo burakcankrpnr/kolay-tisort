@@ -74,7 +74,7 @@ export default async function AccountPage() {
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
   return (
-    <div className="mx-auto max-w-[1280px] overflow-x-clip px-4 pt-6 pb-28 sm:px-6 md:pt-10 md:pb-20">
+    <div className="mx-auto max-w-site overflow-x-clip px-4 pt-6 pb-28 sm:px-6 md:pt-10 md:pb-20">
       {/* Üst kart */}
       <section className="overflow-hidden rounded-card border border-border bg-card">
         <div className="relative bg-gradient-to-br from-foreground via-foreground to-foreground/90 px-5 py-6 text-background sm:px-7 sm:py-8">

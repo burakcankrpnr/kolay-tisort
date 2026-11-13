@@ -2,7 +2,7 @@ import Konva from "konva";
 import { iconDataUrl } from "./assets";
 import { measureText, shapePath } from "./canvas";
 import { ensureFont, fontFamilyFor } from "./fonts";
-import { curvePath, PRINT, PRINT_WIDTH_CM, type Piece } from "./model";
+import { curvePath, printArea, printSizeCm, type Piece, type Side } from "./model";
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
@@ -19,21 +19,23 @@ function loadImage(src: string) {
  * Bir yüzün baskı alanını, ekrandaki tuvalden bağımsız görünmez bir sahnede
  * çizip şeffaf PNG olarak döndürür. Ürün, kılavuz ve maske yoktur; yalnızca baskı.
  */
-export async function renderPrintFile(pieces: Piece[], dpi = 300): Promise<Blob | null> {
+export async function renderPrintFile(pieces: Piece[], dpi = 300, side: Side = "front"): Promise<Blob | null> {
   const visible = pieces.filter((piece) => !piece.hidden);
   if (!visible.length) return null;
   await Promise.all(visible.filter((p) => p.kind === "text").map((p) => ensureFont(p.fontFamily, p.fontStyle)));
 
+  const area = printArea(side);
+  const sizeCm = printSizeCm(side);
   const container = document.createElement("div");
-  const stage = new Konva.Stage({ container, width: PRINT.w, height: PRINT.h });
+  const stage = new Konva.Stage({ container, width: area.w, height: area.h });
   const layer = new Konva.Layer();
   stage.add(layer);
 
   for (const piece of visible) {
     const flippable = piece.kind !== "text";
     const common: Konva.NodeConfig = {
-      x: piece.x - PRINT.x,
-      y: piece.y - PRINT.y,
+      x: piece.x - area.x,
+      y: piece.y - area.y,
       rotation: piece.rotation,
       scaleX: piece.scaleX * (flippable && piece.flipX ? -1 : 1),
       scaleY: piece.scaleY * (flippable && piece.flipY ? -1 : 1),
@@ -100,9 +102,9 @@ export async function renderPrintFile(pieces: Piece[], dpi = 300): Promise<Blob 
   }
 
   layer.draw();
-  const targetPx = (PRINT_WIDTH_CM / 2.54) * dpi;
+  const targetPx = (sizeCm.widthCm / 2.54) * dpi;
   const blob = await new Promise<Blob | null>((resolve) => {
-    stage.toBlob({ pixelRatio: targetPx / PRINT.w, mimeType: "image/png", callback: (b) => resolve(b as Blob | null) });
+    stage.toBlob({ pixelRatio: targetPx / area.w, mimeType: "image/png", callback: (b) => resolve(b as Blob | null) });
   });
   stage.destroy();
   return blob;

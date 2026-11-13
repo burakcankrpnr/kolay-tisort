@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { printFees, type PrintSide } from "@/lib/pricing";
+import { totalPrintFee, type PrintSide } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { saveDataUrl } from "@/lib/storage";
 import { addToCart } from "@/server/actions/cart";
@@ -11,6 +11,8 @@ function isUpload(url: string | undefined): url is string {
   return typeof url === "string" && /^\/(api\/)?uploads\/[a-f0-9-]+\.(png|jpg|webp|svg)$/i.test(url);
 }
 
+type PrintFileSide = "front" | "back" | "neck";
+
 export async function saveDesign(input: {
   productId: string;
   name: string;
@@ -18,15 +20,18 @@ export async function saveDesign(input: {
   printHeightCm: number;
   frontJson: unknown;
   backJson: unknown;
+  neckJson?: unknown;
   previewDataUrl?: string;
   previewUrl?: string;
-  printFiles?: { side: "front" | "back"; url: string; dpi: number }[];
+  printFiles?: { side: PrintFileSide; url: string; dpi: number; widthCm?: number; heightCm?: number }[];
 }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Tasarımı kaydetmek için giriş yap." };
 
   const previewUrl = isUpload(input.previewUrl) ? input.previewUrl : input.previewDataUrl ? await saveDataUrl(input.previewDataUrl) : null;
-  const printFiles = (input.printFiles ?? []).filter((file) => isUpload(file.url) && (file.side === "front" || file.side === "back")).slice(0, 2);
+  const printFiles = (input.printFiles ?? [])
+    .filter((file) => isUpload(file.url) && (file.side === "front" || file.side === "back" || file.side === "neck"))
+    .slice(0, 3);
   const design = await prisma.design.create({
     data: {
       userId: session.user.id,
@@ -36,13 +41,20 @@ export async function saveDesign(input: {
       printHeightCm: input.printHeightCm,
       frontJson: input.frontJson ?? [],
       backJson: input.backJson ?? [],
+      neckJson: input.neckJson ?? [],
       previewUrl,
       layers: printFiles.length
         ? {
             create: printFiles.map((file, index) => ({
               kind: "print-file",
               sortOrder: index,
-              payload: { side: file.side, url: file.url, dpi: Math.round(file.dpi), widthCm: input.printWidthCm, heightCm: input.printHeightCm },
+              payload: {
+                side: file.side,
+                url: file.url,
+                dpi: Math.round(file.dpi),
+                widthCm: file.widthCm ?? input.printWidthCm,
+                heightCm: file.heightCm ?? input.printHeightCm,
+              },
             })),
           }
         : undefined,
@@ -57,22 +69,25 @@ export async function addDesignToCart(input: {
   variantId: string;
   quantity: number;
   printSide: PrintSide;
+  hasNeck?: boolean;
   printWidthCm: number;
   printHeightCm: number;
   frontJson: unknown;
   backJson: unknown;
+  neckJson?: unknown;
   previewDataUrl?: string;
   previewUrl?: string;
-  printFiles?: { side: "front" | "back"; url: string; dpi: number }[];
+  printFiles?: { side: PrintFileSide; url: string; dpi: number; widthCm?: number; heightCm?: number }[];
 }) {
   const saved = await saveDesign(input);
   if ("error" in saved) return saved;
+  const hasNeck = Boolean(input.hasNeck);
   const added = await addToCart({
     variantId: input.variantId,
     quantity: input.quantity,
     designId: saved.id,
     printSide: input.printSide,
-    printFee: printFees[input.printSide],
+    printFee: totalPrintFee(input.printSide, hasNeck),
   });
   if (added.error) return added;
   return { ok: true as const, designId: saved.id };

@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { GarmentFlip } from "@/components/garment-flip";
 import { cn } from "@/lib/utils";
-import { printFees, printSideLabel, quantityTierPercent, type PrintSide } from "@/lib/pricing";
+import { neckFee, printFees, printSideLabel, quantityTierPercent, sidesToPrintSide, totalPrintFee } from "@/lib/pricing";
 import { formatTry } from "@/utils/money";
 import { addDesignToCart, saveDesign } from "@/server/actions/design";
 import { generateLocalArt, knockOutToFile } from "@/lib/ai/client";
@@ -36,10 +36,14 @@ import { dataUrlToBlob, renderPrintFile, uploadBlob } from "./export";
 import { ensureFont } from "./fonts";
 import {
   dpiLevel,
+  emptyDoc,
+  garmentFace,
+  hasAnyPieces,
   makePiece,
   normalizePieces,
   pieceDpi,
-  PRINT,
+  printArea,
+  printSizeCm,
   PRINT_HEIGHT_CM,
   PRINT_WIDTH_CM,
   sideLabel,
@@ -68,7 +72,7 @@ type Props = {
   product: Product;
   products: { slug: string; name: string; silhouette: Silhouette; basePrice: number; color: string }[];
   listings: { id: string; title: string; imageUrl: string }[];
-  initialDesign: { id: string; name: string; front: unknown; back: unknown } | null;
+  initialDesign: { id: string; name: string; front: unknown; back: unknown; neck?: unknown } | null;
   signedIn: boolean;
 };
 
@@ -106,13 +110,35 @@ export default function Editor({ product, products, listings, initialDesign, sig
     const recent = readStorage<Recent[]>(UPLOADS_KEY) ?? [];
     const tour = !readStorage<boolean>(TOUR_KEY);
     if (initialDesign) {
-      return { doc: { front: normalizePieces(initialDesign.front), back: normalizePieces(initialDesign.back) }, name: initialDesign.name, colorName: undefined as string | undefined, restored: "design" as const, recent, tour };
+      return {
+        doc: {
+          front: normalizePieces(initialDesign.front),
+          back: normalizePieces(initialDesign.back),
+          neck: normalizePieces(initialDesign.neck),
+        },
+        name: initialDesign.name,
+        colorName: undefined as string | undefined,
+        restored: "design" as const,
+        recent,
+        tour,
+      };
     }
     const draft = readStorage<{ doc: Doc; colorName?: string; name?: string }>(DRAFT_KEY);
-    if (draft && (draft.doc?.front?.length || draft.doc?.back?.length)) {
-      return { doc: { front: normalizePieces(draft.doc.front), back: normalizePieces(draft.doc.back) }, name: draft.name, colorName: draft.colorName, restored: "draft" as const, recent, tour };
+    if (draft?.doc && (draft.doc.front?.length || draft.doc.back?.length || draft.doc.neck?.length)) {
+      return {
+        doc: {
+          front: normalizePieces(draft.doc.front),
+          back: normalizePieces(draft.doc.back),
+          neck: normalizePieces(draft.doc.neck),
+        },
+        name: draft.name,
+        colorName: draft.colorName,
+        restored: "draft" as const,
+        recent,
+        tour,
+      };
     }
-    return { doc: { front: [], back: [] } as Doc, name: undefined, colorName: undefined, restored: null, recent, tour };
+    return { doc: emptyDoc(), name: undefined, colorName: undefined, restored: null, recent, tour };
   });
 
   // ── Belge ve geçmiş ─────────────────────────────────────────
@@ -310,7 +336,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
             writeStorage(UPLOADS_KEY, next);
             return next;
           });
-          added.push(imagePiece(item, added.length));
+          added.push(imagePiece(item, added.length, printArea(side)));
           if (hasOpaqueWhiteCorners(probe)) toast("Görselin beyaz arka planı var gibi görünüyor. Sağ panelden “Beyaz arka planı kaldır”ı dene.", "info");
         } catch {
           toast("Görsel okunamadı.", "error");
@@ -323,7 +349,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
         if (low) toast("Bu görsel bu boyutta düşük çözünürlüklü. Küçültmen önerilir.", "error");
       }
     },
-    [addPieces, toast],
+    [addPieces, side, toast],
   );
 
   // Panodan yapıştırma (görsel) ve tuvale sürükle-bırak
@@ -341,24 +367,54 @@ export default function Editor({ product, products, listings, initialDesign, sig
 
   // ── İşlemler ────────────────────────────────────────────────
   function addText(patch: Partial<Piece>) {
+    const area = printArea(side);
     const piece = makePiece({ fill: ink, ...patch });
-    piece.x = PRINT.x + PRINT.w / 2 - Math.min(PRINT.w / 2 - 10, (piece.text.length * piece.fontSize * 0.55) / 2);
-    piece.y = PRINT.y + PRINT.h * 0.3;
+    const fontSize = Math.min(piece.fontSize, side === "neck" ? 22 : piece.fontSize);
+    piece.fontSize = fontSize;
+    piece.x = area.x + area.w / 2 - Math.min(area.w / 2 - 4, (piece.text.length * fontSize * 0.55) / 2);
+    piece.y = area.y + area.h * 0.3;
     addPieces([piece]);
   }
 
   function addIcon(icon: string) {
-    addPieces([makePiece({ kind: "icon", icon, width: 110, height: 110, fill: ink, strokeWidth: 2, x: PRINT.x + PRINT.w / 2 - 55, y: PRINT.y + PRINT.h / 2 - 55 })]);
+    const area = printArea(side);
+    const size = side === "neck" ? 48 : 110;
+    addPieces([
+      makePiece({
+        kind: "icon",
+        icon,
+        width: size,
+        height: size,
+        fill: ink,
+        strokeWidth: 2,
+        x: area.x + area.w / 2 - size / 2,
+        y: area.y + area.h / 2 - size / 2,
+      }),
+    ]);
   }
 
   function addShape(shape: Piece["shape"], w: number, h: number) {
-    addPieces([makePiece({ kind: "shape", shape, width: w, height: h, fill: shape === "line" ? ink : "#FF3B00", strokeWidth: 0, x: PRINT.x + (PRINT.w - w) / 2, y: PRINT.y + (PRINT.h - h) / 2 })]);
+    const area = printArea(side);
+    const width = side === "neck" ? Math.min(w, area.w * 0.7) : w;
+    const height = side === "neck" ? Math.min(h, area.h * 0.7) : h;
+    addPieces([
+      makePiece({
+        kind: "shape",
+        shape,
+        width,
+        height,
+        fill: shape === "line" ? ink : "#FF3B00",
+        strokeWidth: 0,
+        x: area.x + (area.w - width) / 2,
+        y: area.y + (area.h - height) / 2,
+      }),
+    ]);
   }
 
   async function addImageUrl(url: string) {
     try {
       const probe = await loadImage(url);
-      addPieces([imagePiece({ url, pixelWidth: probe.naturalWidth || 1000, pixelHeight: probe.naturalHeight || 1000 }, 0)]);
+      addPieces([imagePiece({ url, pixelWidth: probe.naturalWidth || 1000, pixelHeight: probe.naturalHeight || 1000 }, 0, printArea(side))]);
     } catch {
       toast("Görsel eklenemedi.", "error");
     }
@@ -368,7 +424,20 @@ export default function Editor({ product, products, listings, initialDesign, sig
     setAiBusy(true);
     try {
       const art = await generateLocalArt(prompt, variant);
-      addPieces([makePiece({ kind: "image", src: art.url, width: 180, height: 180, pixelWidth: 800, x: PRINT.x + 30, y: PRINT.y + 40, name: `AI · ${prompt.slice(0, 16)}` })]);
+      const area = printArea(side);
+      const size = side === "neck" ? Math.min(area.w, area.h) * 0.75 : 180;
+      addPieces([
+        makePiece({
+          kind: "image",
+          src: art.url,
+          width: size,
+          height: size,
+          pixelWidth: 800,
+          x: area.x + (area.w - size) / 2,
+          y: area.y + (area.h - size) / 2,
+          name: `AI · ${prompt.slice(0, 16)}`,
+        }),
+      ]);
       toast(art.note, "info");
     } catch {
       toast("Üretim tamamlanamadı. Tekrar dene.", "error");
@@ -434,12 +503,13 @@ export default function Editor({ product, products, listings, initialDesign, sig
     if (!b) return;
     let dx = 0;
     let dy = 0;
-    if (where === "left") dx = PRINT.x - b.x;
-    if (where === "hcenter") dx = PRINT.x + PRINT.w / 2 - (b.x + b.width / 2);
-    if (where === "right") dx = PRINT.x + PRINT.w - (b.x + b.width);
-    if (where === "top") dy = PRINT.y - b.y;
-    if (where === "vcenter") dy = PRINT.y + PRINT.h / 2 - (b.y + b.height / 2);
-    if (where === "bottom") dy = PRINT.y + PRINT.h - (b.y + b.height);
+    const area = printArea(side);
+    if (where === "left") dx = area.x - b.x;
+    if (where === "hcenter") dx = area.x + area.w / 2 - (b.x + b.width / 2);
+    if (where === "right") dx = area.x + area.w - (b.x + b.width);
+    if (where === "top") dy = area.y - b.y;
+    if (where === "vcenter") dy = area.y + area.h / 2 - (b.y + b.height / 2);
+    if (where === "bottom") dy = area.y + area.h - (b.y + b.height);
     patchPiece(selected.id, { x: selected.x + dx, y: selected.y + dy });
   }
 
@@ -505,9 +575,11 @@ export default function Editor({ product, products, listings, initialDesign, sig
   });
 
   // ── Fiyat ──────────────────────────────────────────────────
-  const printSide: PrintSide = doc.front.length && doc.back.length ? "BOTH" : doc.back.length ? "BACK" : doc.front.length ? "FRONT" : "NONE";
+  const printSide = sidesToPrintSide(doc.front.length > 0, doc.back.length > 0);
+  const hasNeck = doc.neck.length > 0;
+  const printFee = totalPrintFee(printSide, hasNeck);
   const variant = product.variants.find((item) => item.colorId === colorId && item.sizeId === sizeId);
-  const unit = product.basePrice + (variant?.priceDelta ?? 0) + printFees[printSide];
+  const unit = product.basePrice + (variant?.priceDelta ?? 0) + printFee;
   const subtotal = unit * quantity;
   const discountPct = quantityTierPercent(quantity);
   const discount = Math.round((subtotal * discountPct) / 100);
@@ -515,24 +587,27 @@ export default function Editor({ product, products, listings, initialDesign, sig
   const nextTier = [10, 20, 50].find((tier) => tier > quantity);
   const nextTierPct = nextTier ? quantityTierPercent(nextTier) : 0;
   const stock = variant?.stock ?? 0;
+  const area = printArea(side);
+  const sizeCm = printSizeCm(side);
 
   const warnings = useMemo(() => {
     const list: { tone: "warning" | "error"; text: string }[] = [];
+    const zone = printArea(side);
     const outside = pieces.some((piece) => {
       if (piece.hidden) return false;
       const b = canvasRef.current?.boxOf(piece.id);
       if (!b) return false;
-      return b.x < PRINT.x - 1 || b.y < PRINT.y - 1 || b.x + b.width > PRINT.x + PRINT.w + 1 || b.y + b.height > PRINT.y + PRINT.h + 1;
+      return b.x < zone.x - 1 || b.y < zone.y - 1 || b.x + b.width > zone.x + zone.w + 1 || b.y + b.height > zone.y + zone.h + 1;
     });
     if (outside) list.push({ tone: "warning", text: "Baskı alanı dışına taşan kısım basılmayacak." });
     if (pieces.some((piece) => dpiLevel(pieceDpi(piece)) === "bad")) list.push({ tone: "error", text: "Düşük çözünürlüklü görsel var (150 DPI altı)." });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pieces, fontTick, box]);
+  }, [pieces, fontTick, box, side]);
 
   async function addToCart() {
-    if (printSide === "NONE") {
-      toast("Önce ön veya arka yüze bir öğe ekle.", "error");
+    if (!hasAnyPieces(doc)) {
+      toast("Önce ön, arka veya ense etiketine bir öğe ekle.", "error");
       return;
     }
     if (!variant) {
@@ -559,10 +634,12 @@ export default function Editor({ product, products, listings, initialDesign, sig
       variantId: variant.id,
       quantity,
       printSide,
+      hasNeck,
       printWidthCm: PRINT_WIDTH_CM,
       printHeightCm: PRINT_HEIGHT_CM,
       frontJson: doc.front,
       backJson: doc.back,
+      neckJson: doc.neck,
       previewUrl: assets.previewUrl ?? undefined,
       printFiles: assets.printFiles,
     });
@@ -586,7 +663,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
       toast("Tasarımı hesabına kaydetmek için giriş yap.", "error", { href: `/giris?callbackUrl=/tasarla/${product.slug}`, label: "Giriş yap" });
       return;
     }
-    if (printSide === "NONE") {
+    if (!hasAnyPieces(doc)) {
       toast("Kaydedilecek bir öğe yok.", "error");
       return;
     }
@@ -603,6 +680,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
       printHeightCm: PRINT_HEIGHT_CM,
       frontJson: doc.front,
       backJson: doc.back,
+      neckJson: doc.neck,
       previewUrl: assets.previewUrl ?? undefined,
     });
     setSaveBusy(false);
@@ -618,15 +696,16 @@ export default function Editor({ product, products, listings, initialDesign, sig
     try {
       const mock = canvasRef.current?.exportMockup();
       const previewUrl = mock ? await uploadBlob(await dataUrlToBlob(mock), "onizleme.png") : null;
-      const printFiles: { side: Side; url: string; dpi: number }[] = [];
+      const printFiles: { side: Side; url: string; dpi: number; widthCm: number; heightCm: number }[] = [];
       if (withPrint) {
-        for (const s of ["front", "back"] as const) {
+        for (const s of ["front", "back", "neck"] as const) {
           if (!doc[s].length) continue;
           setBusyText(`${sideLabel[s]} baskı dosyası hazırlanıyor (300 DPI)…`);
-          const blob = await renderPrintFile(doc[s], 300);
+          const blob = await renderPrintFile(doc[s], 300, s);
           const url = blob ? await uploadBlob(blob, `baski-${s}.png`) : null;
           if (!url) throw new Error("print");
-          printFiles.push({ side: s, url, dpi: 300 });
+          const cm = printSizeCm(s);
+          printFiles.push({ side: s, url, dpi: 300, widthCm: cm.widthCm, heightCm: cm.heightCm });
         }
       }
       return { previewUrl, printFiles };
@@ -647,7 +726,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
       href = canvasRef.current?.exportMockup() ?? null;
     } else {
       setBusyText("Baskı dosyası hazırlanıyor (300 DPI)…");
-      const blob = await renderPrintFile(pieces, 300);
+          const blob = await renderPrintFile(pieces, 300, side);
       setBusyText(null);
       href = blob ? URL.createObjectURL(blob) : null;
     }
@@ -680,7 +759,14 @@ export default function Editor({ product, products, listings, initialDesign, sig
   const panel = (current: Tool) => {
     switch (current) {
       case "upload":
-        return <UploadPanel uploading={uploading} recent={recent} onFiles={(files) => void uploadFiles(files)} onAddRecent={(item) => addPieces([imagePiece(item, 0)])} />;
+        return (
+          <UploadPanel
+            uploading={uploading}
+            recent={recent}
+            onFiles={(files) => void uploadFiles(files)}
+            onAddRecent={(item) => addPieces([imagePiece(item, 0, printArea(side))])}
+          />
+        );
       case "text":
         return <TextPanel onAdd={addText} />;
       case "templates":
@@ -714,6 +800,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
     <Properties
       piece={selected}
       box={box}
+      area={area}
       busy={bgBusy}
       onPatch={(patch, key) => patchPiece(selected.id, patch, key)}
       onAlign={align}
@@ -799,10 +886,24 @@ export default function Editor({ product, products, listings, initialDesign, sig
           <dt className="text-muted-foreground">Ürün</dt>
           <dd className="tabular-nums">{formatTry(product.basePrice + (variant?.priceDelta ?? 0))}</dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">{printSideLabel[printSide]}</dt>
-          <dd className="tabular-nums">{printSide === "NONE" ? "—" : `+${formatTry(printFees[printSide])}`}</dd>
-        </div>
+        {printSide !== "NONE" ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">{printSideLabel[printSide]}</dt>
+            <dd className="tabular-nums">+{formatTry(printFees[printSide])}</dd>
+          </div>
+        ) : null}
+        {hasNeck ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Ense etiketi</dt>
+            <dd className="tabular-nums">+{formatTry(neckFee)}</dd>
+          </div>
+        ) : null}
+        {printSide === "NONE" && !hasNeck ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Baskı</dt>
+            <dd className="tabular-nums">—</dd>
+          </div>
+        ) : null}
         {discount ? (
           <div className="flex justify-between text-success">
             <dt>Toplu indirim %{discountPct}</dt>
@@ -873,7 +974,9 @@ export default function Editor({ product, products, listings, initialDesign, sig
               <div className="absolute top-11 right-0 z-10 w-64 rounded-card border border-border bg-card p-1.5 shadow-xl">
                 <button type="button" onClick={() => void download("print")} className="block w-full rounded-control px-3 py-2 text-left text-sm hover:bg-muted">
                   <span className="font-semibold">Baskı dosyası (PNG)</span>
-                  <span className="block text-xs text-muted-foreground">35×40 cm · 300 DPI · şeffaf · {sideLabel[side]}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {sizeCm.widthCm}×{sizeCm.heightCm} cm · 300 DPI · şeffaf · {sideLabel[side]}
+                  </span>
                 </button>
                 <button type="button" onClick={() => void download("mockup")} className="block w-full rounded-control px-3 py-2 text-left text-sm hover:bg-muted">
                   <span className="font-semibold">Ürün önizlemesi (PNG)</span>
@@ -951,10 +1054,10 @@ export default function Editor({ product, products, listings, initialDesign, sig
             if (event.dataTransfer.files.length) void uploadFiles(event.dataTransfer.files);
           }}
         >
-          {/* Ön / Arka */}
+          {/* Ön / Arka / Ense */}
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
             <div className="pointer-events-auto flex rounded-full border border-border bg-card p-1 shadow-sm" role="tablist" aria-label="Baskı yüzü">
-              {(["front", "back"] as const).map((value) => (
+              {(["front", "back", "neck"] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -965,7 +1068,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
                     setSelectedId(null);
                   }}
                   className={cn(
-                    "flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors",
+                    "flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:px-4",
                     side === value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -982,34 +1085,40 @@ export default function Editor({ product, products, listings, initialDesign, sig
                 className={cn("relative overflow-clip transition-opacity", cartBusy && "opacity-70")}
                 style={{ width: STAGE.w * scale, height: STAGE.h * scale }}
               >
-                <GarmentFlip side={side} className="size-full">
-                  {(face) => (
-                    <>
-                      <DesignCanvas
-                        ref={face === side ? canvasRef : undefined}
-                        key={`${fontTick}-${face}`}
-                        pieces={doc[face]}
-                        silhouette={product.silhouette}
-                        garmentColor={garmentHex}
-                        side={face}
-                        selectedId={face === side ? selectedId : null}
-                        scale={scale}
-                        showGrid={showGrid}
-                        realistic={realistic}
-                        onSelect={(id) => setSelectedId(id)}
-                        onChange={(id, patch) => patchPiece(id, patch)}
-                        onPinch={(factor) => setZoom((z) => Math.max(0.5, Math.min(3, z * factor)))}
-                      />
-                      {doc[face].length === 0 ? (
-                        <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                          <p className="max-w-[14rem] rounded-card bg-card/90 px-4 py-3 text-center text-sm shadow-sm backdrop-blur">
-                            <Sparkles size={16} className="mx-auto mb-1 text-primary" />
-                            {sideLabel[face]} yüz boş. Soldan şablon, metin veya görsel ekle.
-                          </p>
-                        </div>
-                      ) : null}
-                    </>
-                  )}
+                <GarmentFlip side={garmentFace(side)} className="size-full">
+                  {(face) => {
+                    const canvasSide: Side = face === "front" ? "front" : side === "neck" ? "neck" : "back";
+                    const active = canvasSide === side;
+                    return (
+                      <>
+                        <DesignCanvas
+                          ref={active ? canvasRef : undefined}
+                          key={`${fontTick}-${canvasSide}`}
+                          pieces={doc[canvasSide]}
+                          silhouette={product.silhouette}
+                          garmentColor={garmentHex}
+                          side={canvasSide}
+                          selectedId={active ? selectedId : null}
+                          scale={scale}
+                          showGrid={showGrid}
+                          realistic={realistic}
+                          onSelect={(id) => setSelectedId(id)}
+                          onChange={(id, patch) => patchPiece(id, patch)}
+                          onPinch={(factor) => setZoom((z) => Math.max(0.5, Math.min(3, z * factor)))}
+                        />
+                        {doc[canvasSide].length === 0 ? (
+                          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                            <p className="max-w-[14rem] rounded-card bg-card/90 px-4 py-3 text-center text-sm shadow-sm backdrop-blur">
+                              <Sparkles size={16} className="mx-auto mb-1 text-primary" />
+                              {canvasSide === "neck"
+                                ? "Ense etiketi boş. Logo veya kısa metin ekle (6×6 cm)."
+                                : `${sideLabel[canvasSide]} yüz boş. Soldan şablon, metin veya görsel ekle.`}
+                            </p>
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  }}
                 </GarmentFlip>
               </div>
             </div>
@@ -1055,7 +1164,7 @@ export default function Editor({ product, products, listings, initialDesign, sig
           </div>
           <div className="absolute right-3 bottom-20 z-10 hidden items-center gap-2 text-xs text-muted-foreground sm:flex lg:bottom-3">
             <span>
-              Baskı alanı {PRINT_WIDTH_CM}×{PRINT_HEIGHT_CM} cm
+              Baskı alanı {sizeCm.widthCm}×{sizeCm.heightCm} cm{side === "neck" ? " · ense" : ""}
             </span>
             {pieces.length ? (
               <button type="button" onClick={clearSide} className="flex items-center gap-1 rounded-control px-2 py-1 hover:bg-card hover:text-foreground">
@@ -1326,13 +1435,13 @@ function loadImage(src: string) {
   });
 }
 
-function imagePiece(item: Recent, offset: number) {
-  const maxW = PRINT.w * 0.7;
+function imagePiece(item: Recent, offset: number, area = printArea("front")) {
+  const maxW = area.w * 0.7;
   const ratio = item.pixelHeight / Math.max(1, item.pixelWidth);
   let width = maxW;
   let height = width * ratio;
-  if (height > PRINT.h * 0.7) {
-    height = PRINT.h * 0.7;
+  if (height > area.h * 0.7) {
+    height = area.h * 0.7;
     width = height / ratio;
   }
   return makePiece({
@@ -1341,8 +1450,8 @@ function imagePiece(item: Recent, offset: number) {
     width,
     height,
     pixelWidth: item.pixelWidth,
-    x: PRINT.x + (PRINT.w - width) / 2 + offset * 12,
-    y: PRINT.y + (PRINT.h - height) / 3 + offset * 12,
+    x: area.x + (area.w - width) / 2 + offset * 12,
+    y: area.y + (area.h - height) / 3 + offset * 12,
   });
 }
 

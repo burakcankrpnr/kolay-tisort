@@ -7,12 +7,37 @@ export const printFees: Record<PrintSide, number> = {
   BOTH: 14900,
 };
 
+/** Ense / yaka içi etiket baskısı; ön/arka ücretine eklenir. */
+export const neckFee = 4900;
+
 export const printSideLabel: Record<PrintSide, string> = {
   NONE: "Baskısız",
   FRONT: "Ön baskı",
   BACK: "Arka baskı",
   BOTH: "Ön ve arka",
 };
+
+export function bodyPrintFee(side: PrintSide) {
+  return printFees[side];
+}
+
+export function totalPrintFee(side: PrintSide, hasNeck: boolean) {
+  return bodyPrintFee(side) + (hasNeck ? neckFee : 0);
+}
+
+export function describePrint(side: PrintSide, hasNeck: boolean) {
+  const parts: string[] = [];
+  if (side !== "NONE") parts.push(printSideLabel[side]);
+  if (hasNeck) parts.push("Ense etiketi");
+  return parts.join(" + ") || "Baskısız";
+}
+
+export function sidesToPrintSide(front: boolean, back: boolean): PrintSide {
+  if (front && back) return "BOTH";
+  if (front) return "FRONT";
+  if (back) return "BACK";
+  return "NONE";
+}
 
 export function unitPrice(basePrice: number, priceDelta: number, printFee = 0) {
   return basePrice + priceDelta + printFee;

@@ -56,6 +56,7 @@ async function pricedCart(userId: string) {
             printHeightCm: item.design.printHeightCm,
             frontJson: item.design.frontJson,
             backJson: item.design.backJson,
+            neckJson: item.design.neckJson,
             printFiles: item.design.layers.map((layer) => layer.payload),
           }
         : item.dtfSheet

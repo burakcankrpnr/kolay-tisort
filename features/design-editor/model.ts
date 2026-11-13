@@ -6,10 +6,17 @@
 export const STAGE = { w: 600, h: 690 } as const;
 export const PRINT_WIDTH_CM = 35;
 export const PRINT_HEIGHT_CM = 40;
+/** Ense etiketi ölçüleri (yaka içi, cm). */
+export const NECK_WIDTH_CM = 6;
+export const NECK_HEIGHT_CM = 6;
 const printW = 240;
 const printH = Math.round((printW * PRINT_HEIGHT_CM) / PRINT_WIDTH_CM);
 export const PRINT = { x: (STAGE.w - printW) / 2, y: 190, w: printW, h: printH } as const;
 export const PX_PER_CM = PRINT.w / PRINT_WIDTH_CM;
+const neckW = Math.round(NECK_WIDTH_CM * PX_PER_CM);
+const neckH = Math.round(NECK_HEIGHT_CM * PX_PER_CM);
+/** Ense alanı: arka yakada, gövde baskısından yukarıda. */
+export const NECK_PRINT = { x: (STAGE.w - neckW) / 2, y: 118, w: neckW, h: neckH } as const;
 
 export type PieceKind = "text" | "image" | "shape" | "icon";
 export type ShapeType = "rect" | "circle" | "triangle" | "star" | "heart" | "line" | "badge";
@@ -61,8 +68,34 @@ export type Piece = {
   iconFilled: boolean;
 };
 
-export type Doc = { front: Piece[]; back: Piece[] };
+export type Doc = { front: Piece[]; back: Piece[]; neck: Piece[] };
 export type Side = keyof Doc;
+
+export function printArea(side: Side) {
+  return side === "neck" ? NECK_PRINT : PRINT;
+}
+
+export function printSizeCm(side: Side) {
+  return side === "neck"
+    ? { widthCm: NECK_WIDTH_CM, heightCm: NECK_HEIGHT_CM }
+    : { widthCm: PRINT_WIDTH_CM, heightCm: PRINT_HEIGHT_CM };
+}
+
+export function garmentFace(side: Side): "front" | "back" {
+  return side === "front" ? "front" : "back";
+}
+
+export function emptyDoc(): Doc {
+  return { front: [], back: [], neck: [] };
+}
+
+export function hasAnyPieces(doc: Doc) {
+  return doc.front.length > 0 || doc.back.length > 0 || doc.neck.length > 0;
+}
+
+export function jsonHasPieces(raw: unknown) {
+  return normalizePieces(raw).length > 0;
+}
 
 let counter = 0;
 export function newId() {
@@ -166,4 +199,4 @@ export function curvePath(width: number, curve: number) {
   return `M0,${Math.max(h, 0) + 4} Q${width / 2},${-h + Math.max(h, 0) + 4} ${width},${Math.max(h, 0) + 4}`;
 }
 
-export const sideLabel: Record<Side, string> = { front: "Ön", back: "Arka" };
+export const sideLabel: Record<Side, string> = { front: "Ön", back: "Arka", neck: "Ense" };

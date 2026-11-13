@@ -27,7 +27,7 @@ const reasons = [
 export default async function CorporatePage() {
   const products = (await listProducts({})).filter((product) => product.slug !== "dtf-tabaka");
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pb-20 sm:px-6">
+    <div className="mx-auto max-w-site px-4 pb-20 sm:px-6">
       <PageHeader
         eyebrow="Kurumsal"
         title="Ekibin, etkinliğin, markan."

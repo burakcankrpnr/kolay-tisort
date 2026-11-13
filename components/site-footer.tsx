@@ -30,7 +30,7 @@ export function SiteFooter({ brand }: { brand: Brand }) {
 
   return (
     <footer className="mt-auto border-t border-border bg-foreground pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-background md:pb-0">
-      <div className="mx-auto max-w-[1280px] px-4 pt-10 pb-8 sm:px-6 sm:pt-14 sm:pb-10">
+      <div className="mx-auto max-w-site px-4 pt-10 pb-8 sm:px-6 sm:pt-14 sm:pb-10">
         <div className="mb-8 md:mb-12">
           <p className="font-display text-3xl font-bold sm:text-4xl">{brand.name}</p>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-background/70">{brand.description}</p>
