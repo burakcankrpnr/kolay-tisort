@@ -60,8 +60,14 @@ export function CheckoutForm({
 
   function next() {
     if (step === 0) {
-      const form = document.getElementById("adres-form") as HTMLFormElement | null;
-      if (!form?.reportValidity()) return;
+      const ids = ["fullName", "phone", "city", "district", "line1", "postalCode"];
+      for (const id of ids) {
+        const field = document.getElementById(id);
+        if (field instanceof HTMLInputElement && !field.checkValidity()) {
+          field.reportValidity();
+          return;
+        }
+      }
     }
     if (step === 2) loadQuote();
     setStep((value) => Math.min(3, value + 1));
