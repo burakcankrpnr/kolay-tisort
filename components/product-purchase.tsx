@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Silhouette } from "@prisma/client";
 import { Minus, PenTool, Plus, ShieldCheck, ShoppingBag, Star, Truck, Upload } from "lucide-react";
 import { Garment } from "@/components/garment";
+import { GarmentFlip } from "@/components/garment-flip";
 import { printFees, quantityTierPercent } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/server/actions/cart";
@@ -111,20 +112,27 @@ export function ProductPurchase({
 
   return (
     <>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
-        {/* Galeri */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+      <div className="grid gap-8 overflow-x-clip lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
+        {/* Galeri — Ön/Arka 3D dönüş; overflow-clip yatay scroll üretmesin */}
+        <div className="min-w-0 overflow-x-clip lg:sticky lg:top-24 lg:self-start">
           <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-card border border-border bg-gradient-to-b from-muted/30 to-muted">
-            <div className="relative w-[68%]" style={view === "back" ? { transform: "scaleX(-1)" } : undefined}>
-              {previousColor ? <Garment kind={silhouette} color={previousColor} print={view === "front"} className="absolute inset-0 w-full drop-shadow-2xl" /> : null}
-              <Garment
-                key={`${colorId}-${view}`}
-                kind={silhouette}
-                color={color?.hex ?? "#161616"}
-                print={view === "front"}
-                className={cn("relative w-full drop-shadow-2xl", previousColor && "color-reveal")}
-              />
-            </div>
+            <GarmentFlip side={view} className="relative w-[68%] max-w-full">
+              {(face) => (
+                <div className="relative w-full">
+                  {previousColor && face === "front" ? (
+                    <Garment kind={silhouette} color={previousColor} side={face} print className="absolute inset-0 w-full drop-shadow-2xl" />
+                  ) : null}
+                  <Garment
+                    key={`${colorId}-${face}`}
+                    kind={silhouette}
+                    color={color?.hex ?? "#161616"}
+                    side={face}
+                    print
+                    className={cn("relative w-full drop-shadow-2xl", previousColor && face === "front" && "color-reveal")}
+                  />
+                </div>
+              )}
+            </GarmentFlip>
             <div className="absolute top-4 left-4 flex rounded-full border border-border bg-card/90 p-1 text-xs font-medium backdrop-blur" role="tablist" aria-label="Görünüm">
               {(["front", "back"] as const).map((value) => (
                 <button

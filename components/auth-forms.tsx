@@ -11,7 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function PasswordInput({ id, autoComplete, onValue }: { id: string; autoComplete: string; onValue?: (value: string) => void }) {
+export function PasswordInput({
+  id,
+  autoComplete,
+  onValue,
+  minLength = 8,
+}: {
+  id: string;
+  autoComplete: string;
+  onValue?: (value: string) => void;
+  minLength?: number;
+}) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
@@ -21,7 +31,7 @@ export function PasswordInput({ id, autoComplete, onValue }: { id: string; autoC
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
         required
-        minLength={8}
+        minLength={minLength}
         className="pr-12"
         onChange={(event) => onValue?.(event.target.value)}
       />
@@ -85,7 +95,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
             Şifremi unuttum
           </Link>
         </div>
-        <PasswordInput id="password" autoComplete="current-password" />
+        <PasswordInput id="password" autoComplete="current-password" minLength={6} />
       </div>
       <FormError message={error} />
       <Button type="submit" size="lg" loading={pending} className="w-full">
@@ -99,7 +109,9 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       </p>
       {process.env.NODE_ENV === "development" ? (
         <p className="rounded-control bg-muted px-4 py-3 text-xs text-muted-foreground">
-          Geliştirme hesapları: {demoAccounts.customer} · {demoAccounts.admin} · Şifre: {demoAccounts.password}
+          Yönetici: {demoAccounts.admin} / {demoAccounts.password}
+          <br />
+          Müşteri: {demoAccounts.customer} / {demoAccounts.customerPassword}
         </p>
       ) : null}
     </form>

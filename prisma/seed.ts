@@ -134,6 +134,7 @@ async function main() {
   await prisma.coupon.deleteMany();
 
   const passwordHash = await bcrypt.hash("Katman123!", 12);
+  const adminPasswordHash = await bcrypt.hash("123456", 12);
 
   const customer = await prisma.user.upsert({
     where: { email: "musteri@katman.test" },
@@ -156,22 +157,28 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  // Eski demo yöneticiyi müşteriye düşür (çakışma olmasın)
+  await prisma.user.updateMany({
     where: { email: "admin@katman.test" },
+    data: { role: "CUSTOMER" },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "stylingpark@gmail.com" },
     update: {
-      passwordHash,
-      firstName: "Eda",
-      lastName: "Kaya",
-      name: "Eda Kaya",
+      passwordHash: adminPasswordHash,
+      firstName: "Styling",
+      lastName: "Park",
+      name: "Styling Park",
       phone: "05322220000",
       role: "ADMIN",
     },
     create: {
-      email: "admin@katman.test",
-      passwordHash,
-      firstName: "Eda",
-      lastName: "Kaya",
-      name: "Eda Kaya",
+      email: "stylingpark@gmail.com",
+      passwordHash: adminPasswordHash,
+      firstName: "Styling",
+      lastName: "Park",
+      name: "Styling Park",
       phone: "05322220000",
       role: "ADMIN",
     },

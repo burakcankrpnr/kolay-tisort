@@ -10,32 +10,37 @@ export const garmentPaths: Record<Silhouette, string> = {
 };
 
 /**
- * Vektör ürün mockup'ı: kumaş gölgesi + ışık katmanı ile baskı kumaşa oturmuş görünür.
- * `print` false ise baskı alanı çizilmez.
+ * Vektör ürün mockup'ı: kumaş gölgesi + ışık katmanı.
+ * `side="back"` boyun etiketi ve arkaya özgü kıvrımlar gösterir; baskı alanı arka yüz için kaydırılır.
  */
 export function Garment({
   kind,
   color,
   className,
   print = true,
+  side = "front",
 }: {
   kind: Silhouette;
   color: string;
   className?: string;
   print?: boolean;
+  side?: "front" | "back";
 }) {
   const id = useId().replace(/:/g, "");
   const light = isLight(color);
   const stroke = light ? "rgba(17,17,17,.35)" : "rgba(255,255,255,.12)";
+  const back = side === "back";
+  const printY = back ? 98 : 92;
+
   return (
     <svg viewBox="0 0 200 230" className={className} aria-hidden="true">
       <defs>
-        <linearGradient id={`shade-${id}`} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`shade-${id}`} x1={back ? "1" : "0"} y1="0" x2={back ? "0" : "1"} y2="1">
           <stop offset="0" stopColor="#fff" stopOpacity={light ? 0.0 : 0.14} />
           <stop offset="0.55" stopColor="#000" stopOpacity="0" />
           <stop offset="1" stopColor="#000" stopOpacity={light ? 0.12 : 0.35} />
         </linearGradient>
-        <radialGradient id={`fold-${id}`} cx="0.5" cy="0.3" r="0.7">
+        <radialGradient id={`fold-${id}`} cx={back ? "0.48" : "0.5"} cy="0.3" r="0.7">
           <stop offset="0.6" stopColor="#000" stopOpacity="0" />
           <stop offset="1" stopColor="#000" stopOpacity={light ? 0.08 : 0.2} />
         </radialGradient>
@@ -47,21 +52,41 @@ export function Garment({
       <path d={garmentPaths[kind]} fill={color} stroke={stroke} strokeWidth="1.2" strokeLinejoin="round" />
       <g clipPath={`url(#clip-${id})`}>
         <rect width="200" height="230" fill={`url(#fold-${id})`} />
-        <path d="M70 120 C90 128 110 112 130 124" stroke="#000" strokeOpacity="0.06" strokeWidth="6" fill="none" />
+        <path
+          d={back ? "M72 118 C92 110 112 128 132 116" : "M70 120 C90 128 110 112 130 124"}
+          stroke="#000"
+          strokeOpacity="0.06"
+          strokeWidth="6"
+          fill="none"
+        />
         {print ? (
           <g style={{ mixBlendMode: light ? "multiply" : "normal" }}>
-            <rect x="74" y="92" width="52" height="62" rx="4" style={{ fill: "hsl(var(--primary))" }} />
-            <path d="M84 138 L100 106 L116 138 Z" fill={light ? "#111" : "#FAFAF8"} opacity="0.9" />
-            <circle cx="112" cy="106" r="5" fill={light ? "#111" : "#FAFAF8"} opacity="0.9" />
+            <rect x="74" y={printY} width="52" height="62" rx="4" style={{ fill: "hsl(var(--primary))" }} />
+            <path d={`M84 ${printY + 46} L100 ${printY + 14} L116 ${printY + 46} Z`} fill={light ? "#111" : "#FAFAF8"} opacity="0.9" />
+            <circle cx="112" cy={printY + 14} r="5" fill={light ? "#111" : "#FAFAF8"} opacity="0.9" />
           </g>
         ) : null}
         <rect width="200" height="230" fill={`url(#shade-${id})`} />
       </g>
-      {kind === "SWEAT" ? <path d="M46 186 H154" stroke={stroke} strokeWidth="1.5" /> : null}
-      {kind === "HOODIE" ? <path d="M78 160 H122 V184 H78 Z" fill="none" stroke={stroke} strokeWidth="1.5" /> : null}
-      {kind !== "HOODIE" ? (
+
+      {/* Boyun / etiket */}
+      {back ? (
+        <g>
+          <path d="M88 48 H112 V62 H88 Z" fill={light ? "rgba(17,17,17,.12)" : "rgba(255,255,255,.14)"} stroke={stroke} strokeWidth="1" />
+          <path d="M94 52 H106" stroke={stroke} strokeWidth="1.2" />
+          {kind === "HOODIE" ? (
+            <path d="M78 42 C100 58 122 42 122 42" fill="none" stroke={stroke} strokeWidth="1.5" />
+          ) : (
+            <path d="M82 40 C100 28 118 40 118 40" fill="none" stroke={stroke} strokeWidth="1.5" />
+          )}
+        </g>
+      ) : kind !== "HOODIE" ? (
         <path d="M76 34 C88 52 112 52 124 34" fill="none" stroke={stroke} strokeWidth="1.5" />
       ) : null}
+
+      {kind === "SWEAT" ? <path d="M46 186 H154" stroke={stroke} strokeWidth="1.5" /> : null}
+      {kind === "HOODIE" && !back ? <path d="M78 160 H122 V184 H78 Z" fill="none" stroke={stroke} strokeWidth="1.5" /> : null}
+      {kind === "HOODIE" && back ? <path d="M70 70 C100 92 130 70 130 70" fill="none" stroke={stroke} strokeWidth="1.4" opacity="0.7" /> : null}
     </svg>
   );
 }

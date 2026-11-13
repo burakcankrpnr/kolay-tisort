@@ -15,6 +15,7 @@ export const nav = [
 
 export const demoAccounts = {
   customer: "musteri@katman.test",
-  admin: "admin@katman.test",
-  password: "Katman123!",
+  customerPassword: "Katman123!",
+  admin: "stylingpark@gmail.com",
+  password: "123456",
 };

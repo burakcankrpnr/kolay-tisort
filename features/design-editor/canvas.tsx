@@ -19,6 +19,7 @@ type Props = {
   pieces: Piece[];
   silhouette: Silhouette;
   garmentColor: string;
+  side?: "front" | "back";
   selectedId: string | null;
   scale: number;
   showGrid: boolean;
@@ -88,7 +89,7 @@ function useHtmlImage(src: string) {
 }
 
 export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanvas(
-  { pieces, silhouette, garmentColor, selectedId, scale, showGrid, realistic, onSelect, onChange, onPinch },
+  { pieces, silhouette, garmentColor, side = "front", selectedId, scale, showGrid, realistic, onSelect, onChange, onPinch },
   ref,
 ) {
   const stageRef = useRef<Konva.Stage>(null);
@@ -247,6 +248,18 @@ export const DesignCanvas = forwardRef<CanvasHandle, Props>(function DesignCanva
             stroke={isLight ? "rgba(17,17,17,0.25)" : "rgba(255,255,255,0.12)"}
             strokeWidth={0.5}
           />
+          {side === "back" ? (
+            <Group listening={false} scaleX={GARMENT_SCALE} scaleY={GARMENT_SCALE}>
+              <Rect x={88} y={48} width={24} height={14} fill={isLight ? "rgba(17,17,17,0.12)" : "rgba(255,255,255,0.14)"} stroke={chromeColor} strokeWidth={0.4} />
+              <Line points={[94, 52, 106, 52]} stroke={chromeColor} strokeWidth={0.5} />
+              <Path
+                data={silhouette === "HOODIE" ? "M78 42 C100 58 122 42 122 42" : "M82 40 C100 28 118 40 118 40"}
+                stroke={chromeColor}
+                strokeWidth={0.5}
+                fillEnabled={false}
+              />
+            </Group>
+          ) : null}
         </Group>
 
         {/* Baskı alanı, ızgara ve cetvel (dışa aktarımda gizlenir) */}

@@ -25,6 +25,7 @@ import {
   Copy,
   ArrowUpToLine,
 } from "lucide-react";
+import { GarmentFlip } from "@/components/garment-flip";
 import { cn } from "@/lib/utils";
 import { printFees, printSideLabel, quantityTierPercent, type PrintSide } from "@/lib/pricing";
 import { formatTry } from "@/utils/money";
@@ -975,31 +976,41 @@ export default function Editor({ product, products, listings, initialDesign, sig
             </div>
           </div>
 
-          <div ref={viewportRef} className="studio-dots relative min-h-0 flex-1 overflow-auto">
-            <div className="grid min-h-full min-w-full place-items-center p-4" style={{ width: STAGE.w * scale + 32, height: STAGE.h * scale + 32, minWidth: "100%", minHeight: "100%" }}>
-              <div className={cn("relative transition-opacity", cartBusy && "opacity-70")}>
-                <DesignCanvas
-                  ref={canvasRef}
-                  key={fontTick}
-                  pieces={pieces}
-                  silhouette={product.silhouette}
-                  garmentColor={garmentHex}
-                  selectedId={selectedId}
-                  scale={scale}
-                  showGrid={showGrid}
-                  realistic={realistic}
-                  onSelect={(id) => setSelectedId(id)}
-                  onChange={(id, patch) => patchPiece(id, patch)}
-                  onPinch={(factor) => setZoom((z) => Math.max(0.5, Math.min(3, z * factor)))}
-                />
-                {pieces.length === 0 ? (
-                  <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                    <p className="max-w-[14rem] rounded-card bg-card/90 px-4 py-3 text-center text-sm shadow-sm backdrop-blur">
-                      <Sparkles size={16} className="mx-auto mb-1 text-primary" />
-                      {sideLabel[side]} yüz boş. Soldan şablon, metin veya görsel ekle.
-                    </p>
-                  </div>
-                ) : null}
+          <div ref={viewportRef} className="studio-dots relative min-h-0 flex-1 overflow-auto overflow-x-clip">
+            <div className="grid min-h-full min-w-full place-items-center overflow-x-clip p-4" style={{ width: STAGE.w * scale + 32, height: STAGE.h * scale + 32, minWidth: "100%", minHeight: "100%" }}>
+              <div
+                className={cn("relative overflow-clip transition-opacity", cartBusy && "opacity-70")}
+                style={{ width: STAGE.w * scale, height: STAGE.h * scale }}
+              >
+                <GarmentFlip side={side} className="size-full">
+                  {(face) => (
+                    <>
+                      <DesignCanvas
+                        ref={face === side ? canvasRef : undefined}
+                        key={`${fontTick}-${face}`}
+                        pieces={doc[face]}
+                        silhouette={product.silhouette}
+                        garmentColor={garmentHex}
+                        side={face}
+                        selectedId={face === side ? selectedId : null}
+                        scale={scale}
+                        showGrid={showGrid}
+                        realistic={realistic}
+                        onSelect={(id) => setSelectedId(id)}
+                        onChange={(id, patch) => patchPiece(id, patch)}
+                        onPinch={(factor) => setZoom((z) => Math.max(0.5, Math.min(3, z * factor)))}
+                      />
+                      {doc[face].length === 0 ? (
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                          <p className="max-w-[14rem] rounded-card bg-card/90 px-4 py-3 text-center text-sm shadow-sm backdrop-blur">
+                            <Sparkles size={16} className="mx-auto mb-1 text-primary" />
+                            {sideLabel[face]} yüz boş. Soldan şablon, metin veya görsel ekle.
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </GarmentFlip>
               </div>
             </div>
             {dragOver ? (

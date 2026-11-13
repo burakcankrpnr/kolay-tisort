@@ -14,7 +14,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().trim().email("Geçerli bir e-posta yaz."),
-  password: z.string().min(8, "Şifre en az 8 karakter olmalı.").max(72),
+  password: z.string().min(6, "Şifre en az 6 karakter olmalı.").max(72),
 });
 
 /** Tek sepet satırında en fazla adet (toplu/kurumsal siparişler için; stok ayrıca kontrol edilir). */
