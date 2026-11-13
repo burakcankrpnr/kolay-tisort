@@ -4,11 +4,12 @@ import NextAuth from "next-auth";
 import Apple from "next-auth/providers/apple";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import type { Provider } from "next-auth/providers";
 import bcrypt from "bcryptjs";
 import { loginSchema } from "@/lib/validators";
 import { prisma } from "@/lib/prisma";
 
-const providers = [
+const providers: Provider[] = [
   Credentials({
     credentials: {
       email: { label: "E-posta", type: "email" },
@@ -63,7 +64,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ auth: session, request }) {
       const path = request.nextUrl.pathname;
-      if (path.startsWith("/hesap") || path.startsWith("/odeme")) {
+      if (
+        path.startsWith("/hesap") ||
+        path.startsWith("/odeme") ||
+        path.startsWith("/admin") ||
+        path.startsWith("/tasarimci")
+      ) {
         return !!session?.user;
       }
       return true;

@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { AuthShell } from "@/components/auth-shell";
 import { RegisterForm } from "@/components/auth-forms";
 
-export const metadata: Metadata = { title: "Kayıt" };
+export const metadata: Metadata = { title: "Kayıt ol", robots: { index: false } };
 
 export default async function RegisterPage() {
   const session = await auth();
   if (session?.user) redirect("/hesap");
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12">
-      <h1 className="font-display text-5xl md:text-7xl">Kayıt</h1>
-      <div className="mt-8">
-        <RegisterForm />
-      </div>
-    </div>
+    <AuthShell title="Hesap oluştur" lede="Bir dakikada üye ol; tasarımların hesabında saklansın.">
+      <RegisterForm />
+    </AuthShell>
   );
 }

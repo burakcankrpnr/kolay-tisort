@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { cartItemSchema } from "@/lib/validators";
+import { cartItemSchema, MAX_LINE_QUANTITY } from "@/lib/validators";
 import { CART_COOKIE } from "@/server/cart";
 
 async function cartForWrite() {
@@ -34,9 +34,18 @@ async function cartForWrite() {
   return created;
 }
 
-export async function addToCart(input: { variantId: string; quantity: number }) {
+export async function addToCart(input: {
+  variantId: string;
+  quantity: number;
+  designId?: string;
+  printSide?: "NONE" | "FRONT" | "BACK" | "BOTH";
+  printFee?: number;
+  dtfSheetId?: string;
+}) {
   const parsed = cartItemSchema.safeParse(input);
-  if (!parsed.success) return { error: "Adet 1 ile 10 arasında olmalı." };
+  if (!parsed.success) return { error: `Adet 1 ile ${MAX_LINE_QUANTITY} arasında olmalı.` };
+  const printSide = input.printSide ?? "NONE";
+  const printFee = input.printFee ?? 0;
 
   const variant = await prisma.productVariant.findUnique({
     where: { id: parsed.data.variantId },
@@ -46,10 +55,20 @@ export async function addToCart(input: { variantId: string; quantity: number }) 
   if (variant.stock < parsed.data.quantity) return { error: "Bu bedenin stoğu yetmiyor." };
 
   const cart = await cartForWrite();
-  const existing = await prisma.cartItem.findUnique({
-    where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
-  });
-  const quantity = Math.min(10, (existing?.quantity ?? 0) + parsed.data.quantity);
+  const existing =
+    input.designId || input.dtfSheetId
+      ? null
+      : await prisma.cartItem.findFirst({
+          where: {
+            cartId: cart.id,
+            variantId: variant.id,
+            designId: null,
+            dtfSheetId: null,
+            printSide,
+          },
+        });
+  const cap = input.dtfSheetId ? 20 : MAX_LINE_QUANTITY;
+  const quantity = Math.min(cap, (existing?.quantity ?? 0) + parsed.data.quantity);
   if (quantity > variant.stock) return { error: "Sepetteki adet stoktan fazla olamaz." };
 
   if (existing) {
@@ -60,7 +79,11 @@ export async function addToCart(input: { variantId: string; quantity: number }) 
         cartId: cart.id,
         productId: variant.productId,
         variantId: variant.id,
-        quantity,
+        quantity: input.designId || input.dtfSheetId ? parsed.data.quantity : quantity,
+        designId: input.designId,
+        printSide,
+        printFee,
+        dtfSheetId: input.dtfSheetId,
       },
     });
   }
@@ -80,7 +103,7 @@ export async function updateCartItem(itemId: string, quantity: number) {
   if (quantity <= 0) {
     await prisma.cartItem.delete({ where: { id: item.id } });
   } else {
-    const next = Math.min(10, quantity);
+    const next = Math.min(item.dtfSheetId ? 20 : MAX_LINE_QUANTITY, quantity);
     if (next > item.variant.stock) return { error: "Bu bedenin stoğu yetmiyor." };
     await prisma.cartItem.update({ where: { id: item.id }, data: { quantity: next } });
   }

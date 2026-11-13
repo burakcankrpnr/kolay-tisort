@@ -17,9 +17,12 @@ export const loginSchema = z.object({
   password: z.string().min(8, "Şifre en az 8 karakter olmalı.").max(72),
 });
 
+/** Tek sepet satırında en fazla adet (toplu/kurumsal siparişler için; stok ayrıca kontrol edilir). */
+export const MAX_LINE_QUANTITY = 500;
+
 export const cartItemSchema = z.object({
   variantId: z.string().min(1),
-  quantity: z.coerce.number().int().min(1).max(10),
+  quantity: z.coerce.number().int().min(1).max(20),
 });
 
 export const checkoutSchema = z.object({

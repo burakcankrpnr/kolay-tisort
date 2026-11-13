@@ -51,6 +51,35 @@ enum PaymentProviderName {
   SIMULATION
 }
 
+enum PrintSide {
+  NONE
+  FRONT
+  BACK
+  BOTH
+}
+
+enum ListingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ListingCategory {
+  ANIME
+  GAMING
+  GOTHIC
+  STREETWEAR
+  MINIMAL
+  VINTAGE
+  COUPLE
+  FUNNY
+  MEME
+  MUSIC
+  SPORT
+  KIDS
+  TRENDING
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -78,6 +107,7 @@ model User {
   dtfOrders        DTFOrder[]
   notifications    Notification[]
   couponUsages     CouponUsage[]
+  listings         Listing[]
 }
 
 model Account {
@@ -175,6 +205,8 @@ model Product {
   orderItems     OrderItem[]
   favorites      Favorite[]
   reviews        Review[]
+  designs        Design[]
+  listings       Listing[]
 
   @@index([categoryId])
 }
@@ -254,18 +286,24 @@ model Cart {
 }
 
 model CartItem {
-  id        String         @id @default(cuid())
-  cartId    String
-  productId String
-  variantId String
-  quantity  Int
-  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
-  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id         String         @id @default(cuid())
+  cartId     String
+  productId  String
+  variantId  String
+  quantity   Int
+  designId   String?
+  printSide  PrintSide      @default(NONE)
+  printFee   Int            @default(0)
+  dtfSheetId String?
+  cart       Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  design     Design?        @relation(fields: [designId], references: [id])
+  dtfSheet   DTFSheet?      @relation(fields: [dtfSheetId], references: [id])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
-  @@unique([cartId, variantId])
+  @@index([cartId])
 }
 
 model Order {
@@ -294,25 +332,31 @@ model Order {
   items            OrderItem[]
   payment          Payment?
   couponUsages     CouponUsage[]
+  returns          ReturnRequest[]
 
   @@index([userId])
 }
 
 model OrderItem {
-  id          String         @id @default(cuid())
-  orderId     String
-  productId   String
-  variantId   String
-  productName String
-  colorName   String
-  sizeName    String
-  unitPrice   Int
-  quantity    Int
-  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
-  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  orderId          String
+  productId        String
+  variantId        String
+  productName      String
+  colorName        String
+  sizeName         String
+  unitPrice        Int
+  quantity         Int
+  printSide        PrintSide      @default(NONE)
+  printFee         Int            @default(0)
+  designSnapshot   Json?
+  printFileUrl     String?
+  dtfSheetId       String?
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model Payment {
@@ -382,14 +426,23 @@ model Review {
 }
 
 model Design {
-  id        String        @id @default(cuid())
-  userId    String
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String        @default("Adsız tasarım")
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  deletedAt DateTime?
-  layers    DesignLayer[]
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?      @relation(fields: [productId], references: [id])
+  name          String        @default("Adsız tasarım")
+  printWidthCm  Float         @default(35)
+  printHeightCm Float         @default(40)
+  frontJson     Json?
+  backJson      Json?
+  previewUrl    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  layers        DesignLayer[]
+  cartItems     CartItem[]
+  listings      Listing[]
 }
 
 model DesignLayer {
@@ -423,6 +476,8 @@ model DTFOrder {
   id        String     @id @default(cuid())
   userId    String
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    OrderStatus @default(PENDING_PAYMENT)
+  total     Int        @default(0)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   sheets    DTFSheet[]
@@ -432,24 +487,46 @@ model DTFSheet {
   id         String      @id @default(cuid())
   dtfOrderId String
   dtfOrder   DTFOrder    @relation(fields: [dtfOrderId], references: [id], onDelete: Cascade)
+  widthCm    Int         @default(30)
+  heightCm   Int         @default(40)
+  placement  Json?
+  price      Int         @default(0)
+  quantity   Int         @default(1)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   designs    DTFDesign[]
+  cartItems  CartItem[]
 }
 
 model DTFDesign {
   id        String   @id @default(cuid())
   sheetId   String
   sheet     DTFSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  imageUrl  String   @default("")
+  label     String   @default("Tasarım")
+  x         Float    @default(0)
+  y         Float    @default(0)
+  width     Float    @default(10)
+  height    Float    @default(10)
+  rotation  Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model BusinessRequest {
-  id        String   @id @default(cuid())
-  company   String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  company     String   @default("")
+  contactName String   @default("")
+  phone       String   @default("")
+  email       String   @default("")
+  productName String   @default("")
+  quantity    Int      @default(1)
+  printType   String   @default("")
+  dueDate     String   @default("")
+  note        String   @default("")
+  quoteAmount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Commission {
@@ -479,6 +556,8 @@ model BlogPost {
   id         String        @id @default(cuid())
   title      String
   slug       String        @unique
+  excerpt    String        @default("")
+  body       String        @default("")
   categoryId String?
   category   BlogCategory? @relation(fields: [categoryId], references: [id])
   createdAt  DateTime      @default(now())
@@ -490,6 +569,48 @@ model Page {
   id        String   @id @default(cuid())
   slug      String   @unique
   title     String
+  body      String   @default("")
+  kind      String   @default("page")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Listing {
+  id         String          @id @default(cuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id])
+  designId   String?
+  design     Design?         @relation(fields: [designId], references: [id])
+  title      String
+  category   ListingCategory
+  tags       String          @default("")
+  price      Int
+  imageUrl   String          @default("")
+  status     ListingStatus   @default(PENDING)
+  salesCount Int             @default(0)
+  rating     Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([status])
+}
+
+model EmailMessage {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model ReturnRequest {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reason    String
+  status    String   @default("REQUESTED")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -514,4 +635,39 @@ model Notification {
   updatedAt DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// Panelden yönetilen site ayarları. Her anahtar (brand, theme, effects, promo)
+// için yayındaki değer `value`, kaydedilmiş ama yayınlanmamış taslak `draft`.
+model SiteSetting {
+  key       String   @id
+  value     Json
+  draft     Json?
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+  history   SiteSettingVersion[]
+}
+
+model SiteSettingVersion {
+  id        String      @id @default(cuid())
+  key       String
+  setting   SiteSetting @relation(fields: [key], references: [key], onDelete: Cascade)
+  version   Int
+  value     Json
+  createdAt DateTime    @default(now())
+  createdBy String?
+
+  @@index([key, version])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([target, createdAt])
 }

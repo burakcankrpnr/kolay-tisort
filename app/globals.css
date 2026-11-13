@@ -1,34 +1,108 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Design token'ları. Değerler HSL bileşeni olarak tutulur ("H S% L%") ve
+ * panelden gelen tema ayarı layout'ta :root üzerine yazılır (lib/theme.ts).
+ * Eski sınıflar (ink, paper, press, line, concrete) token'lara bağlanmış takma adlardır.
+ */
+:root {
+  --background: 60 14% 98%;
+  --foreground: 0 0% 7%;
+  --card: 0 0% 100%;
+  --card-foreground: var(--foreground);
+  --primary: 14 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 12% 92%;
+  --accent: 40 12% 92%;
+  --muted: 40 10% 93%;
+  --muted-foreground: 0 0% 38%;
+  --border: 43 12% 89%;
+  --input: 43 12% 84%;
+  --ring: var(--primary);
+  --success: 152 60% 36%;
+  --warning: 38 92% 45%;
+  --destructive: 0 72% 48%;
+  --surface-elevated: 0 0% 100%;
+
+  --r-card: 16px;
+  --r-control: 12px;
+  --font-display-active: var(--font-bricolage-display);
+  --font-body-active: var(--font-inter-body);
+
+  /* Efekt zamanlaması: panelden "hız" ayarı bu çarpanı değiştirir. */
+  --motion-scale: 1;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --card: 40 4% 9%;
+  --secondary: 40 4% 14%;
+  --accent: 40 4% 14%;
+  --muted: 40 4% 13%;
+  --muted-foreground: 40 6% 66%;
+  --input: 40 4% 24%;
+  --surface-elevated: 40 4% 11%;
+  color-scheme: dark;
+}
+
 @theme inline {
-  --font-sans: var(--font-barlow), "Barlow", sans-serif;
-  --font-display: var(--font-condensed), "Barlow Condensed", sans-serif;
-  --color-ink: #121212;
-  --color-paper: #f3f3f0;
-  --color-concrete: #c8c4bc;
-  --color-press: #ff3b00;
-  --color-line: #d9d6d0;
+  --font-sans: var(--font-body-active), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-active), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-accent: hsl(var(--accent));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-destructive: hsl(var(--destructive));
+  --color-surface-elevated: hsl(var(--surface-elevated));
+
+  /* Geriye dönük takma adlar */
+  --color-ink: hsl(var(--foreground));
+  --color-paper: hsl(var(--background));
+  --color-press: hsl(var(--primary));
+  --color-line: hsl(var(--border));
+  --color-concrete: hsl(var(--input));
+
+  --radius-card: var(--r-card);
+  --radius-control: var(--r-control);
 }
 
 html {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   font-family: var(--font-sans);
   min-height: 100vh;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-press);
+  outline: 2px solid hsl(var(--primary));
   outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--color-ink);
-  color: var(--color-paper);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }
 
 h1,
@@ -37,5 +111,582 @@ h3,
 .font-display {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+}
+
+/* Akışkan tipografi ölçeği */
+.text-display {
+  font-size: clamp(2.5rem, 6vw + 1rem, 5.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.text-h1 {
+  font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
+  line-height: 1.05;
+}
+.text-h2 {
+  font-size: clamp(1.5rem, 2.5vw + 1rem, 2.5rem);
+  line-height: 1.1;
+}
+
+/* ───────────────────────── EFEKT KATMANI ─────────────────────────
+ * html[data-fx-*] öznitelikleri EffectsProvider tarafından ayarlanır.
+ * Varsayılan (JS yokken) hâl her zaman statik ve okunur kalır.
+ */
+
+/*
+ * 1. Kinetik başlık: kelimeler sırayla yukarı kayarak yerine oturur.
+ * LCP kuralı: metin ilk boyamadan itibaren görünür (opaklık 1, maske/kırpma yok);
+ * yalnızca transform hareket eder. Öznitelik sunucuda basılır → animasyon ilk
+ * boyamada başlar, hidrasyondan sonra "görün-kaybol-gel" titremesi olmaz.
+ */
+.kinetic-word {
+  display: inline-block;
+}
+.kinetic-word > span {
+  display: inline-block;
+}
+html[data-fx-kinetic="on"] .kinetic-word > span {
+  animation: kinetic-up calc(900ms * var(--motion-scale)) var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 80ms * var(--motion-scale));
+}
+@keyframes kinetic-up {
+  from {
+    transform: translateY(0.45em) rotate(2deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* 2. Scroll reveal: sadece JS hazırken gizlenir (no-JS ve LCP güvenli). */
+html[data-fx-reveal="on"] [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(24px) scale(0.985);
+}
+html[data-fx-reveal="on"] [data-reveal] {
+  transition:
+    opacity calc(700ms * var(--motion-scale)) var(--ease-out-expo),
+    transform calc(700ms * var(--motion-scale)) var(--ease-out-expo);
+  transition-delay: calc(var(--stagger, 0) * 70ms * var(--motion-scale));
+}
+
+/* 3. Marquee */
+.marquee {
+  --gap: 2.5rem;
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  gap: var(--gap);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee__track {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 100%;
+  justify-content: space-around;
+  gap: var(--gap);
+}
+html[data-fx-marquee="on"] .marquee__track {
+  animation: marquee calc(38s * var(--motion-scale)) linear infinite;
+}
+html[data-fx-marquee="on"] .marquee[data-reverse] .marquee__track {
+  animation-direction: reverse;
+}
+html[data-fx-marquee="on"] .marquee:hover .marquee__track {
+  animation-duration: calc(90s * var(--motion-scale));
+}
+@keyframes marquee {
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+/* 4. Mesh gradient — çok yavaş, sadece transform */
+.mesh {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+.mesh > i {
+  position: absolute;
+  border-radius: 9999px;
+  width: 45%;
+  aspect-ratio: 1;
+}
+.mesh > i:nth-child(1) {
+  left: 50%;
+  top: 5%;
+  background: hsl(var(--primary) / 0.35);
+}
+.mesh > i:nth-child(2) {
+  left: 10%;
+  top: 40%;
+  background: hsl(40 70% 70% / 0.35);
+}
+.mesh > i:nth-child(3) {
+  left: 60%;
+  top: 50%;
+  background: hsl(220 60% 65% / 0.22);
+}
+html[data-fx-mesh="on"] .mesh > i {
+  animation: mesh-drift calc(24s * var(--motion-scale)) ease-in-out infinite alternate;
+}
+html[data-fx-mesh="on"] .mesh > i:nth-child(2) {
+  animation-duration: calc(31s * var(--motion-scale));
+  animation-direction: alternate-reverse;
+}
+html[data-fx-mesh="on"] .mesh > i:nth-child(3) {
+  animation-duration: calc(37s * var(--motion-scale));
+}
+html:not([data-fx-mesh="on"]) .mesh {
+  display: none;
+}
+@keyframes mesh-drift {
+  to {
+    transform: translate3d(-12%, 10%, 0) scale(1.15);
+  }
+}
+
+/* 5. Grain: tek küçük SVG, pointer-events yok */
+html[data-fx-grain="on"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("/textures/grain.svg");
+  background-size: 160px;
+}
+:root[data-theme="dark"][data-fx-grain="on"] body::after {
+  opacity: 0.09;
+}
+
+/* 6. Kart: lift + gradient kenar + spotlight + tilt (değişkenler JS'ten) */
+.fx-card {
+  --mx: 50%;
+  --my: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  position: relative;
+  isolation: isolate;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(var(--lift, 0));
+  transition:
+    transform 260ms var(--ease-out-expo),
+    box-shadow 260ms var(--ease-out-expo),
+    border-color 260ms;
+}
+@media (hover: hover) {
+  .fx-card:hover {
+    --lift: -5px;
+    box-shadow:
+      0 1px 2px hsl(var(--foreground) / 0.04),
+      0 18px 40px -18px hsl(var(--foreground) / 0.25);
+  }
+}
+.fx-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9), transparent 45%, hsl(var(--foreground) / 0.25));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 260ms;
+}
+.fx-card:hover::before,
+.fx-card:focus-visible::before {
+  opacity: 1;
+}
+html[data-fx-spotlight="on"] .fx-card::after,
+html[data-fx-spotlight="on"] .fx-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--mx) var(--my), hsl(var(--primary) / 0.1), transparent 45%);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+html[data-fx-spotlight="on"] .fx-card:hover::after,
+html[data-fx-spotlight="on"] .fx-spot:hover::after {
+  opacity: 1;
+}
+.fx-spot {
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  isolation: isolate;
+}
+
+/* 7. Link çizgisi soldan sağa */
+.link-underline {
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0 1px;
+  transition: background-size 300ms var(--ease-out-expo);
+}
+.link-underline:hover,
+.link-underline:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* 8. Primary CTA dolgu genişlemesi */
+.btn-fill {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-fill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: hsl(var(--primary));
+  clip-path: circle(0% at var(--bx, 50%) var(--by, 50%));
+  transition: clip-path 500ms var(--ease-out-expo);
+}
+@media (hover: hover) {
+  .btn-fill:hover::before {
+    clip-path: circle(150% at var(--bx, 50%) var(--by, 50%));
+  }
+  .btn-fill:hover .btn-arrow {
+    transform: translateX(4px);
+  }
+}
+.btn-arrow {
+  transition: transform 300ms var(--ease-out-expo);
+}
+
+/* 9. Renk dolgu (circular reveal) */
+.color-reveal {
+  animation: color-reveal calc(700ms * var(--motion-scale)) var(--ease-out-expo) both;
+}
+@keyframes color-reveal {
+  from {
+    clip-path: circle(0% at var(--cx, 50%) var(--cy, 60%));
+  }
+  to {
+    clip-path: circle(150% at var(--cx, 50%) var(--cy, 60%));
+  }
+}
+
+/* 10. Hero ürün: nefes alan hafif sallanma */
+html[data-fx-parallax="on"] .float-soft {
+  animation: float-soft calc(7s * var(--motion-scale)) ease-in-out infinite;
+}
+@keyframes float-soft {
+  50% {
+    transform: translateY(-10px) rotate(-1.2deg);
+  }
+}
+
+/* 11. Scroll göstergesi */
+.scroll-cue::after {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 100%;
+  background: currentColor;
+  transform-origin: top;
+  animation: scroll-cue 2.2s var(--ease-out-expo) infinite;
+}
+@keyframes scroll-cue {
+  0% {
+    transform: scaleY(0);
+  }
+  50% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  51% {
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+/* 12. Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--secondary)) 37%, hsl(var(--muted)) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0 50%;
+  }
+}
+
+/* 13. Rozet zıplama */
+.bump {
+  animation: bump 420ms var(--ease-spring);
+}
+@keyframes bump {
+  40% {
+    transform: scale(1.35);
+  }
+}
+
+/* 14. Sayfa geçişleri: yalnızca istemci içi gezinmede (ilk yüklemede asla) */
+html[data-fx-pages="on"] .page-enter {
+  animation: page-enter calc(380ms * var(--motion-scale)) var(--ease-out-expo) both;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* 15. Özel imleç (sadece Şov + ince işaretçi) */
+.fx-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 1px solid hsl(var(--foreground) / 0.5);
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--primary-foreground));
+  transition:
+    width 240ms var(--ease-out-expo),
+    height 240ms var(--ease-out-expo),
+    margin 240ms var(--ease-out-expo),
+    background 240ms,
+    opacity 200ms;
+  mix-blend-mode: normal;
+}
+.fx-cursor[data-label] {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  background: hsl(var(--primary));
+  border-color: transparent;
+}
+.fx-cursor[data-hidden] {
+  opacity: 0;
+}
+
+/* Hareketi azalt: tüm efektler statik hâle döner */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .fx-card {
+    transform: none !important;
+  }
+}
+
+/* Magnetic buton geri dönüşü yaylı */
+[data-magnetic] {
+  transition: transform 400ms var(--ease-spring);
+}
+
+/* ───────────────────────── TASARIM STÜDYOSU ───────────────────────── */
+.studio-dots {
+  background-image: radial-gradient(hsl(var(--foreground) / 0.09) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.checker {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e9e9e9 25%, transparent 25%),
+    linear-gradient(-45deg, #e9e9e9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e9e9e9 75%),
+    linear-gradient(-45deg, transparent 75%, #e9e9e9 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+.studio-panel {
+  scrollbar-width: thin;
+}
+.studio-range {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.studio-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: hsl(var(--input));
+}
+.studio-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: hsl(var(--input));
+}
+.studio-range::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--foreground));
+  transition: transform 150ms;
+}
+.studio-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--foreground));
+}
+.studio-range:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+.toast-in {
+  animation: toast-in 380ms var(--ease-spring) both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+}
+/* Fiyat değişince rakam aşağıdan kayarak gelir (odometer hissi) */
+.price-tick {
+  display: inline-block;
+  animation: price-tick 360ms var(--ease-out-expo) both;
+}
+@keyframes price-tick {
+  from {
+    opacity: 0.3;
+    transform: translateY(40%);
+  }
+}
+
+/* ───────────────────────── FORM TEMELİ ─────────────────────────
+ * Tüm form öğeleri token'lı köşe ve zemin alır (sınıfsız kalan eski formlar dahil).
+ */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea {
+    border-radius: var(--r-control);
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: hsl(var(--primary));
+  }
+}
+
+/* Hatalı alanda yumuşak sallanma */
+.shake {
+  animation: shake 420ms var(--ease-out-expo);
+}
+@keyframes shake {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+/* Çizilen onay işareti */
+.draw-circle {
+  stroke-dasharray: 190;
+  stroke-dashoffset: 190;
+  animation: draw 700ms var(--ease-out-expo) forwards;
+}
+.draw-check {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: draw 450ms 450ms var(--ease-out-expo) forwards;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ───────────────────────── YÖNETİM PANELİ ─────────────────────────
+ * Eski panel formlarındaki sert siyah kenarlıkları ve köşesiz butonları
+ * katmansız CSS ile (utility'lerden güçlü) tutarlı tasarım diline çeker.
+ */
+.admin-ui h1 {
+  font-size: clamp(2rem, 3vw + 1rem, 2.75rem);
+  line-height: 1.1;
+}
+.admin-ui :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
+  border-color: hsl(var(--input));
+  border-radius: var(--r-control);
+  background-color: hsl(var(--card));
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.admin-ui :is(input, select, textarea):focus {
+  border-color: hsl(var(--foreground));
+  box-shadow: 0 0 0 4px hsl(var(--foreground) / 0.05);
+  outline: none;
+}
+.admin-ui button {
+  border-radius: var(--r-control);
+  font-weight: 600;
+  transition: background-color 150ms, border-color 150ms, transform 150ms;
+}
+.admin-ui button:active {
+  transform: scale(0.98);
+}
+.admin-ui :is(.border-line, .border-ink):is(li, form, section, div):not(:is(input, select, textarea, button)) {
+  border-color: hsl(var(--border));
+}
+.admin-ui :is(li, section, article).border {
+  border-radius: var(--r-card);
+  background-color: hsl(var(--card));
+}
+.admin-ui table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+.admin-ui :is(th, td) {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.admin-ui th {
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
 }

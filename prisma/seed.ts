@@ -109,9 +109,24 @@ const products: SeedProduct[] = [
 ];
 
 async function main() {
+  await prisma.designerProfile.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.returnRequest.deleteMany();
+  await prisma.listing.deleteMany();
+  await prisma.emailMessage.deleteMany();
+  await prisma.businessRequest.deleteMany();
+  await prisma.verificationToken.deleteMany();
   await prisma.couponUsage.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.address.deleteMany();
   await prisma.cart.deleteMany();
+  await prisma.dTFDesign.deleteMany();
+  await prisma.dTFSheet.deleteMany();
+  await prisma.dTFOrder.deleteMany();
+  await prisma.designLayer.deleteMany();
+  await prisma.design.deleteMany();
+  await prisma.blogPost.deleteMany();
+  await prisma.page.deleteMany();
   await prisma.favorite.deleteMany();
   await prisma.review.deleteMany();
   await prisma.product.deleteMany();
@@ -120,7 +135,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash("Katman123!", 12);
 
-  await prisma.user.upsert({
+  const customer = await prisma.user.upsert({
     where: { email: "musteri@katman.test" },
     update: {
       passwordHash,
@@ -218,6 +233,129 @@ async function main() {
       ),
     });
   }
+
+  const stickerId = categoryIds.get("sticker");
+  if (!stickerId) throw new Error("Sticker kategorisi yok.");
+  const sheet = await prisma.product.create({
+    data: {
+      name: "DTF Tabaka",
+      slug: "dtf-tabaka",
+      description: "Tabaka baskı satırı. Vitrinde görünmez, DTF editörü sepete bunu yazar.",
+      basePrice: 0,
+      productionDays: 2,
+      silhouette: "TEE",
+      fit: "REGULAR",
+      isPopular: false,
+      categoryId: stickerId,
+      colors: { create: { name: "Şeffaf", hex: "#F3F3F0" } },
+      sizes: { create: { name: "Tabaka", sortOrder: 0 } },
+    },
+    include: { colors: true, sizes: true },
+  });
+  await prisma.productVariant.create({
+    data: {
+      productId: sheet.id,
+      colorId: sheet.colors[0].id,
+      sizeId: sheet.sizes[0].id,
+      sku: "dtf-tabaka",
+      stock: 500,
+    },
+  });
+
+  const designer = await prisma.user.upsert({
+    where: { email: "tasarimci@katman.test" },
+    update: { passwordHash, firstName: "Ada", lastName: "Demir", name: "Ada Demir", role: "DESIGNER" },
+    create: {
+      email: "tasarimci@katman.test",
+      passwordHash,
+      firstName: "Ada",
+      lastName: "Demir",
+      name: "Ada Demir",
+      role: "DESIGNER",
+    },
+  });
+  await prisma.designerProfile.create({ data: { userId: designer.id, displayName: "Ada Demir" } });
+  const anime = await prisma.product.findUniqueOrThrow({ where: { slug: "anime-tisort" } });
+  const design = await prisma.design.create({
+    data: {
+      userId: designer.id,
+      productId: anime.id,
+      name: "Gece çizgisi",
+      previewUrl: "/garments/tee.svg",
+      frontJson: { pieces: [] },
+    },
+  });
+  await prisma.listing.create({
+    data: {
+      userId: designer.id,
+      productId: anime.id,
+      designId: design.id,
+      title: "Gece çizgisi",
+      category: "ANIME",
+      tags: "gece, çizgi",
+      price: 7900,
+      imageUrl: "/garments/tee.svg",
+      status: "APPROVED",
+      rating: 5,
+    },
+  });
+
+  await prisma.address.create({
+    data: {
+      userId: customer.id,
+      fullName: "Deniz Yılmaz",
+      phone: "05321110000",
+      city: "İstanbul",
+      district: "Kadıköy",
+      line1: "Moda Caddesi 12 Daire 3",
+      postalCode: "34710",
+      isDefault: true,
+    },
+  });
+
+  await prisma.page.create({
+    data: {
+      slug: "hero",
+      kind: "hero",
+      title: "Kendi Tasarımını Giy.",
+      body: "Tasarımını yükle, ürününü seç, baskını oluştur. Biz üretelim, kapına gönderelim.",
+    },
+  });
+  await prisma.page.create({
+    data: {
+      slug: "faq",
+      kind: "faq",
+      title: "Sık sorulanlar",
+      body: JSON.stringify([
+        { q: "Baskı ne kadar sürer?", a: "Üretim çoğu üründe 3 iş günü, hoodie’de 4 iş günü. Kargo buna eklenir." },
+        { q: "Hangi kargoyu kullanıyorsunuz?", a: "Aras, Yurtiçi, MNG ve Sürat. Ücreti ve süreyi ödemede görürsün." },
+        { q: "Tasarımımı şimdi yükleyebilir miyim?", a: "Evet. Ürün sayfasından veya Kendin Tasarla menüsünden editöre gir." },
+      ]),
+    },
+  });
+
+  await prisma.blogPost.createMany({
+    data: [
+      {
+        title: "Baskı dosyası nasıl hazırlanır",
+        slug: "baski-dosyasi-nasil-hazirlanir",
+        excerpt: "Şeffaf zemin, yeterli çözünürlük ve taşmayan yerleşim.",
+        body: "PNG ya da SVG kullan. Baskı alanı 35×40 santim. 300 DPI net bir baskı verir, 150 DPI altında uyarı çıkar.\nYazıyı kalın ve okunur tut. Açık zemini editörde temizleyebilirsin.",
+      },
+      {
+        title: "DTF tabaka nasıl dizilir",
+        slug: "dtf-tabaka-nasil-dizilir",
+        excerpt: "Parçalar arasında pay bırak, AUTOFIT ile sıkıştır.",
+        body: "Tabakayı 30×40 ile 60×90 arasında seç. Görselleri sürükle, gerekirse 90 derece döndür.\nAUTOFIT parçaları üst üste bindirmeden rafa dizer. Adet tabaka fiyatıyla çarpılır.",
+      },
+      {
+        title: "Kurumsal siparişte adet indirimi",
+        slug: "kurumsal-adet-indirimi",
+        excerpt: "10, 20 ve 50 adette kademe değişir.",
+        body: "10 adette yüzde 5, 20 adette yüzde 10, 50 adette yüzde 15 indirim uygulanır.\nFormu doldurunca teklif tutarı kayda geçer ve yönetim ekranında görünür.",
+      },
+    ],
+  });
 }
 
 main()

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getShipping } from "@/lib/shipping";
-import { orderTotal, percentDiscount, unitPrice } from "@/lib/pricing";
+import { bulkDiscount, orderTotal, percentDiscount, quantityTierPercent, unitPrice } from "@/lib/pricing";
 import { quotePayment } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema } from "@/lib/validators";
@@ -18,11 +18,20 @@ function orderNumber() {
 async function pricedCart(userId: string) {
   const cart = await readCart();
   if (!cart || cart.userId !== userId || cart.items.length === 0) {
-    return { error: "Sepetin boş." as const };
+    return { ok: false as const, error: "Sepetin boş." };
   }
 
+  const designIds = cart.items.flatMap((item) => (item.designId ? [item.designId] : []));
+  const listings = designIds.length
+    ? await prisma.listing.findMany({
+        where: { designId: { in: designIds }, status: "APPROVED" },
+        select: { id: true, designId: true },
+      })
+    : [];
+
   const lines = cart.items.map((item) => {
-    const price = unitPrice(item.product.basePrice, item.variant.priceDelta);
+    const price = unitPrice(item.product.basePrice, item.variant.priceDelta, item.printFee);
+    const listing = listings.find((row) => row.designId === item.designId);
     return {
       productId: item.productId,
       variantId: item.variantId,
@@ -33,36 +42,65 @@ async function pricedCart(userId: string) {
       quantity: item.quantity,
       stock: item.variant.stock,
       deleted: Boolean(item.product.deletedAt),
+      printSide: item.printSide,
+      printFee: item.printFee,
+      printFileUrl:
+        ((item.design?.layers[0]?.payload as { url?: string } | undefined)?.url ?? item.design?.previewUrl ?? item.dtfSheet?.designs?.[0]?.imageUrl) || null,
+      dtfSheetId: item.dtfSheetId,
+      designSnapshot: item.design
+        ? {
+            id: item.design.id,
+            listingId: listing?.id ?? null,
+            previewUrl: item.design.previewUrl,
+            printWidthCm: item.design.printWidthCm,
+            printHeightCm: item.design.printHeightCm,
+            frontJson: item.design.frontJson,
+            backJson: item.design.backJson,
+            printFiles: item.design.layers.map((layer) => layer.payload),
+          }
+        : item.dtfSheet
+          ? { sheetId: item.dtfSheet.id, widthCm: item.dtfSheet.widthCm, heightCm: item.dtfSheet.heightCm }
+          : undefined,
     };
   });
 
   if (lines.some((line) => line.deleted)) {
-    return { error: "Sepette satıştan kalkan bir ürün var." as const };
+    return { ok: false as const, error: "Sepette satıştan kalkan bir ürün var." };
   }
   if (lines.some((line) => line.quantity > line.stock)) {
-    return { error: "Sepette stoğu yetmeyen bir beden var." as const };
+    return { ok: false as const, error: "Sepette stoğu yetmeyen bir beden var." };
   }
 
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  return { cartId: cart.id, lines, subtotal };
+  // Toplu indirim: DTF tabakaları hariç tüm tekstil satırlarının toplam adedine göre otomatik.
+  const garments = lines.filter((line) => !line.dtfSheetId);
+  const garmentQuantity = garments.reduce((sum, line) => sum + line.quantity, 0);
+  const garmentSubtotal = garments.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+  const bulk = bulkDiscount(garmentSubtotal, garmentQuantity);
+  return { ok: true as const, cartId: cart.id, lines, subtotal, bulk, bulkPercent: quantityTierPercent(garmentQuantity) };
 }
 
 export async function previewCheckout(input: { shippingId: string; couponCode?: string }) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Ödeme için giriş yap." };
+  if (!session?.user?.id) return { ok: false as const, error: "Ödeme için giriş yap." };
 
   const shipping = getShipping(input.shippingId);
-  if (!shipping) return { error: "Kargo firması seç." };
+  if (!shipping) return { ok: false as const, error: "Kargo firması seç." };
 
   const cart = await pricedCart(session.user.id);
-  if ("error" in cart) return cart;
+  if (!cart.ok) return cart;
 
-  const coupon = await resolveCoupon(input.couponCode, session.user.id, cart.subtotal);
-  if ("error" in coupon && input.couponCode?.trim()) return coupon;
+  const coupon = await resolveCoupon(input.couponCode, session.user.id, cart.subtotal - cart.bulk);
+  if (!coupon.ok && input.couponCode?.trim()) return coupon;
+  const couponDiscount = coupon.ok ? coupon.discount : 0;
+  const discount = cart.bulk + couponDiscount;
 
-  const discount = "discount" in coupon ? coupon.discount : 0;
   return {
+    ok: true as const,
     subtotal: cart.subtotal,
+    bulkDiscount: cart.bulk,
+    bulkPercent: cart.bulkPercent,
+    couponDiscount,
     discount,
     shippingFee: shipping.fee,
     total: orderTotal(cart.subtotal, discount, shipping.fee),
@@ -71,23 +109,23 @@ export async function previewCheckout(input: { shippingId: string; couponCode?: 
 
 async function resolveCoupon(code: string | undefined, userId: string, subtotal: number) {
   const normalized = code?.trim().toUpperCase();
-  if (!normalized) return { discount: 0, code: null as string | null };
+  if (!normalized) return { ok: true as const, discount: 0, code: null as string | null };
 
   const coupon = await prisma.coupon.findUnique({ where: { code: normalized } });
   if (!coupon || !coupon.active || (coupon.expiresAt && coupon.expiresAt < new Date())) {
-    return { error: "Kupon kodu geçersiz." as const };
+    return { ok: false as const, error: "Kupon kodu geçersiz." };
   }
 
   const used = await prisma.couponUsage.findUnique({
     where: { couponId_userId: { couponId: coupon.id, userId } },
   });
-  if (used) return { error: "Bu kuponu daha önce kullandın." as const };
+  if (used) return { ok: false as const, error: "Bu kuponu daha önce kullandın." };
 
-  const discount = coupon.percentOff
-    ? percentDiscount(subtotal, coupon.percentOff)
-    : Math.min(subtotal, coupon.amountOff ?? 0);
+  const percentOff = coupon.percentOff ?? 0;
+  const discount =
+    percentOff > 0 ? percentDiscount(subtotal, percentOff) : Math.min(subtotal, coupon.amountOff ?? 0);
 
-  return { discount, code: coupon.code };
+  return { ok: true as const, discount, code: coupon.code };
 }
 
 export async function placeOrder(input: unknown) {
@@ -108,12 +146,12 @@ export async function placeOrder(input: unknown) {
 
   const userId = session.user.id;
   const cart = await pricedCart(userId);
-  if ("error" in cart) return cart;
+  if (!cart.ok) return { error: cart.error };
 
-  const coupon = await resolveCoupon(parsed.data.couponCode, userId, cart.subtotal);
-  if ("error" in coupon) return coupon;
+  const coupon = await resolveCoupon(parsed.data.couponCode, userId, cart.subtotal - cart.bulk);
+  if (!coupon.ok) return { error: coupon.error };
 
-  const discount = coupon.discount;
+  const discount = cart.bulk + coupon.discount;
   const total = orderTotal(cart.subtotal, discount, shipping.fee);
 
   let number = orderNumber();
@@ -164,6 +202,11 @@ export async function placeOrder(input: unknown) {
             sizeName: line.sizeName,
             unitPrice: line.unitPrice,
             quantity: line.quantity,
+            printSide: line.printSide,
+            printFee: line.printFee,
+            printFileUrl: line.printFileUrl,
+            dtfSheetId: line.dtfSheetId,
+            designSnapshot: line.designSnapshot,
           })),
         },
         payment: {

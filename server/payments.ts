@@ -63,6 +63,15 @@ export async function applyPaymentEvent(input: {
         where: { id: payment.id },
         data: { status: "SUCCESS", providerRef: input.providerRef ?? payment.providerRef },
       });
+      for (const item of order.items) {
+        const snap = item.designSnapshot as { listingId?: string | null } | null;
+        if (snap?.listingId) {
+          await tx.listing.updateMany({
+            where: { id: snap.listingId },
+            data: { salesCount: { increment: item.quantity } },
+          });
+        }
+      }
       return tx.order.update({
         where: { id: order.id },
         data: { status: "PAID" },

@@ -9,6 +9,8 @@ export const cartInclude = {
     include: {
       product: true,
       variant: { include: { color: true, size: true } },
+      design: { include: { layers: { where: { kind: "print-file" }, orderBy: { sortOrder: "asc" as const } } } },
+      dtfSheet: { include: { designs: true } },
     },
     orderBy: { createdAt: "asc" as const },
   },
@@ -62,9 +64,17 @@ export async function mergeGuestCart(userId: string) {
   }
 
   for (const item of guest.items) {
-    const existing = await prisma.cartItem.findUnique({
-      where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
-    });
+    const existing = item.designId || item.dtfSheetId
+      ? null
+      : await prisma.cartItem.findFirst({
+          where: {
+            cartId: userCart.id,
+            variantId: item.variantId,
+            designId: null,
+            dtfSheetId: null,
+            printSide: item.printSide,
+          },
+        });
     const quantity = Math.min(10, (existing?.quantity ?? 0) + item.quantity);
     if (existing) {
       await prisma.cartItem.update({ where: { id: existing.id }, data: { quantity } });
@@ -74,7 +84,11 @@ export async function mergeGuestCart(userId: string) {
           cartId: userCart.id,
           productId: item.productId,
           variantId: item.variantId,
-          quantity,
+          quantity: item.quantity,
+          designId: item.designId,
+          printSide: item.printSide,
+          printFee: item.printFee,
+          dtfSheetId: item.dtfSheetId,
         },
       });
     }

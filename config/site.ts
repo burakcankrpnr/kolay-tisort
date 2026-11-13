@@ -6,10 +6,11 @@ export const site = {
 
 export const nav = [
   { href: "/urunler", label: "Ürünler" },
-  { href: "/urunler", label: "Kendin Tasarla" },
+  { href: "/tasarla", label: "Kendin Tasarla" },
   { href: "/dtf-baski", label: "DTF Baskı" },
   { href: "/hazir-tasarimlar", label: "Hazır Tasarımlar" },
   { href: "/kurumsal", label: "Kurumsal" },
+  { href: "/blog", label: "Blog" },
 ] as const;
 
 export const demoAccounts = {
